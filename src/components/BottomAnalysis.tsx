@@ -191,3 +191,4 @@ export const BottomAnalysis: React.FC<BottomAnalysisProps> = ({
     </div>
   );
 };
+

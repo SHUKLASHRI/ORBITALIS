@@ -97,3 +97,4 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
     </div>
   );
 };
+

@@ -13,12 +13,13 @@ import { StatusBadge } from './components/StatusBadge';
 import { SettingsModal } from './components/SettingsModal';
 import { AboutModal } from './components/AboutModal';
 import { ScenariosModal } from './components/ScenariosModal';
+import { EditSimulationModal } from './components/EditSimulationModal';
 
 export function App() {
   const initialPreset = PRESET_SOLAR_SYSTEM;
 
   // Navigation tab state
-  const [currentTab, setCurrentTab] = useState<'simulate' | 'analyze' | 'scenarios' | 'about'>('simulate');
+  const [currentTab, setCurrentTab] = useState<'simulate' | 'edit' | 'analyze' | 'scenarios' | 'about'>('simulate');
 
   // Simulation Configuration
   const [config, setConfig] = useState<SimulationConfig>({
@@ -49,6 +50,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
   const [isScenariosOpen, setIsScenariosOpen] = useState<boolean>(false);
+  const [isEditSimulationOpen, setIsEditSimulationOpen] = useState<boolean>(false);
   const [fps, setFps] = useState<number>(60);
 
   // Standalone Physics Engine
@@ -163,9 +165,11 @@ export function App() {
   }, [selectedBodyId, isFollowingBody]);
 
   // Handle Header Tabs
-  const handleSelectNavTab = (tab: 'simulate' | 'analyze' | 'scenarios' | 'about') => {
+  const handleSelectNavTab = (tab: 'simulate' | 'edit' | 'analyze' | 'scenarios' | 'about') => {
     setCurrentTab(tab);
-    if (tab === 'analyze') {
+    if (tab === 'edit') {
+      setIsEditSimulationOpen(true);
+    } else if (tab === 'analyze') {
       setIsAnalysisOpen((prev) => !prev);
     } else if (tab === 'scenarios') {
       setIsScenariosOpen(true);
@@ -231,6 +235,7 @@ export function App() {
         onSelectTab={handleSelectNavTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenHelp={() => setIsAboutOpen(true)}
+        onOpenEditSimulation={() => setIsEditSimulationOpen(true)}
       />
 
       {/* 2. Full-Screen Interactive 3D Viewport */}
@@ -261,6 +266,7 @@ export function App() {
         onToggleFollowBody={handleToggleFollow}
         isAnalysisOpen={isAnalysisOpen}
         onToggleAnalysis={() => setIsAnalysisOpen(!isAnalysisOpen)}
+        onOpenEditSimulation={() => setIsEditSimulationOpen(true)}
       />
 
       {/* 4. Right Inspector Panel */}
@@ -277,6 +283,7 @@ export function App() {
           onToggleFocus={handleToggleFocus}
           isFollowing={isFollowingBody && focusedBodyId === selectedBodyId}
           onToggleFollow={handleToggleFollow}
+          onOpenEditSimulation={() => setIsEditSimulationOpen(true)}
         />
       )}
 
@@ -303,9 +310,19 @@ export function App() {
         config={config}
         onUpdateConfig={handleUpdateConfig}
         fps={fps}
+        onOpenEditSimulation={() => setIsEditSimulationOpen(true)}
       />
 
       {/* Modals */}
+      <EditSimulationModal
+        isOpen={isEditSimulationOpen}
+        onClose={() => setIsEditSimulationOpen(false)}
+        config={config}
+        onUpdateConfig={handleUpdateConfig}
+        showAsteroidBelt={showAsteroidBelt}
+        onToggleAsteroidBelt={() => setShowAsteroidBelt(!showAsteroidBelt)}
+      />
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

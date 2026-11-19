@@ -70,3 +70,4 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+

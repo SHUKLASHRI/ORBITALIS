@@ -81,3 +81,4 @@ export const ScenariosModal: React.FC<ScenariosModalProps> = ({
     </div>
   );
 };
+

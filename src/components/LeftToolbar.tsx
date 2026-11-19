@@ -9,6 +9,7 @@ import {
   Box,
   Camera,
   LineChart,
+  Sliders,
   X,
   Search,
   Trash2,
@@ -26,6 +27,7 @@ interface LeftToolbarProps {
   onToggleFollowBody: () => void;
   isAnalysisOpen: boolean;
   onToggleAnalysis: () => void;
+  onOpenEditSimulation: () => void;
 }
 
 export const LeftToolbar: React.FC<LeftToolbarProps> = ({
@@ -40,6 +42,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
   onToggleFollowBody,
   isAnalysisOpen,
   onToggleAnalysis,
+  onOpenEditSimulation,
 }) => {
   const [activeFlyout, setActiveFlyout] = useState<'hierarchy' | 'add' | 'presets' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +107,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
               ? 'bg-[#8797FF]/20 text-[#8797FF] border border-[#8797FF]/40'
               : 'text-[#8E9BAD] hover:text-[#E8EEF7] hover:bg-[#141E2B]'
           }`}
-          title="Add Celestial Body"
+          title="Add Celestial Body (+)"
         >
           <Plus size={16} />
         </button>
@@ -117,12 +120,21 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
               ? 'bg-[#8797FF]/20 text-[#8797FF] border border-[#8797FF]/40'
               : 'text-[#8E9BAD] hover:text-[#E8EEF7] hover:bg-[#141E2B]'
           }`}
-          title="Object Hierarchy"
+          title="Object Hierarchy & List"
         >
           <Orbit size={16} />
         </button>
 
-        {/* 4. Presets / Scenarios */}
+        {/* 4. Edit Simulation & Physics */}
+        <button
+          onClick={onOpenEditSimulation}
+          className="p-2 rounded-lg text-[#8797FF] hover:text-white hover:bg-[#8797FF]/20 transition"
+          title="Edit Simulation & Physics Parameters"
+        >
+          <Sliders size={16} />
+        </button>
+
+        {/* 5. Presets / Scenarios */}
         <button
           onClick={() => setActiveFlyout(activeFlyout === 'presets' ? null : 'presets')}
           className={`p-2 rounded-lg transition ${
@@ -135,7 +147,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
           <Box size={16} />
         </button>
 
-        {/* 5. Camera Follow Toggle */}
+        {/* 6. Camera Follow Toggle */}
         <button
           onClick={onToggleFollowBody}
           disabled={!selectedBodyId}
@@ -149,7 +161,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
           <Camera size={16} />
         </button>
 
-        {/* 6. Analysis Toggle */}
+        {/* 7. Analysis Toggle */}
         <button
           onClick={onToggleAnalysis}
           className={`p-2 rounded-lg transition ${

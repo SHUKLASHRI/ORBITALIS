@@ -1,12 +1,13 @@
 import React from 'react';
 import type { SimulationConfig, IntegratorType } from '../physics/types';
-import { ChevronDown, Orbit, Clock, Cpu } from 'lucide-react';
+import { ChevronDown, Orbit, Clock, Cpu, Sliders } from 'lucide-react';
 
 interface StatusBadgeProps {
   bodyCount: number;
   config: SimulationConfig;
   onUpdateConfig: (updated: Partial<SimulationConfig>) => void;
   fps: number;
+  onOpenEditSimulation?: () => void;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -14,13 +15,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   config,
   onUpdateConfig,
   fps,
+  onOpenEditSimulation,
 }) => {
   // Convert timeStep (years) to human seconds / minutes / hours
   const dtSeconds = Math.round(config.timeStep * 365.25 * 86400);
 
   return (
     <div className="absolute bottom-4 right-4 z-30 pointer-events-none select-none font-sans">
-      <div className="pointer-events-auto bg-[#101722]/95 backdrop-blur-md border border-[#263447] p-2.5 rounded-xl shadow-2xl text-xs text-[#E8EEF7] space-y-1.5 w-44">
+      <div className="pointer-events-auto bg-[#101722]/95 backdrop-blur-md border border-[#263447] p-2.5 rounded-xl shadow-2xl text-xs text-[#E8EEF7] space-y-1.5 w-48">
         {/* Bodies Count & Status Dot */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-[#8E9BAD]">
@@ -70,7 +72,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
             <ChevronDown size={10} className="absolute right-1 top-1.5 text-[#8E9BAD] pointer-events-none" />
           </div>
         </div>
+
+        {/* Quick Edit Simulation Trigger */}
+        {onOpenEditSimulation && (
+          <button
+            onClick={onOpenEditSimulation}
+            className="w-full mt-1 pt-1.5 border-t border-[#263447]/60 text-[11px] text-[#8797FF] hover:text-white flex items-center justify-center gap-1.5 transition font-medium"
+          >
+            <Sliders size={12} />
+            <span>Edit Simulation Parameters</span>
+          </button>
+        )}
       </div>
     </div>
   );
 };
+

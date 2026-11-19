@@ -88,21 +88,22 @@ export function ThreeViewport({
     scene.background = new THREE.Color(0x080B12);
     sceneRef.current = scene;
 
-    // 2. Camera
+    // 2. Camera with Microscopic Near Plane and Extended Far Range
     const camera = new THREE.PerspectiveCamera(
       42,
       container.clientWidth / container.clientHeight,
-      0.01,
-      2000
+      0.005,
+      4000
     );
     camera.position.set(0, 18, 30);
     cameraRef.current = camera;
 
-    // 3. WebGL Renderer
+    // 3. WebGL Renderer with Logarithmic Depth Buffer to Eliminate Space Clipping
     const renderer = new THREE.WebGLRenderer({
       antialias: config.renderQuality !== 'performance',
       powerPreference: 'high-performance',
       alpha: false,
+      logarithmicDepthBuffer: true,
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -111,12 +112,12 @@ export function ThreeViewport({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 4. OrbitControls
+    // 4. OrbitControls with Close Zoom Support
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 0.2;
-    controls.maxDistance = 800;
+    controls.minDistance = 0.02;
+    controls.maxDistance = 1500;
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
@@ -160,6 +161,7 @@ export function ThreeViewport({
       vertexColors: true,
       transparent: true,
       opacity: 0.8,
+      depthWrite: false,
     });
     const starField = new THREE.Points(starGeom, starMaterial);
     scene.add(starField);
@@ -193,13 +195,19 @@ export function ThreeViewport({
       transparent: true,
       opacity: 0.3,
       blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     const nebulaField = new THREE.Points(nebulaGeom, nebulaMaterial);
     scene.add(nebulaField);
 
-    // 8. Ecliptic Coordinate Grid
+    // 8. Ecliptic Coordinate Grid with DepthWrite Disabled to Prevent Planet Slicing
     const grid = new THREE.GridHelper(60, 60, 0x263447, 0x141E2B);
     grid.position.y = -0.01;
+    if (grid.material instanceof THREE.Material) {
+      grid.material.depthWrite = false;
+      grid.material.transparent = true;
+      grid.material.opacity = 0.25;
+    }
     scene.add(grid);
     gridHelperRef.current = grid;
 
@@ -411,38 +419,47 @@ export function ThreeViewport({
           sphere.name = 'sphere';
           group.add(sphere);
 
-          // Star Photosphere Radiance
+          // Star Photosphere Radiance (DepthWrite disabled, unit geometry dynamically scaled)
           if (isStar) {
-            const coronaGeom = new THREE.SphereGeometry(1.25, 24, 24);
+            const coronaGeom = new THREE.SphereGeometry(1.0, 32, 24);
             const coronaMat = new THREE.MeshBasicMaterial({
-              color: 0xffa500,
+              color: 0xffaa22,
               transparent: true,
               opacity: 0.22,
               side: THREE.BackSide,
+              depthWrite: false,
+              blending: THREE.AdditiveBlending,
             });
             const corona = new THREE.Mesh(coronaGeom, coronaMat);
+            corona.name = 'corona';
             group.add(corona);
           }
 
-          // Saturn Rings (Physical Mesh)
+          // Saturn Rings (Normalized unit geometry, DepthWrite disabled to prevent cutting into planet sphere)
           if (b.rings) {
-            const ringGeom = new THREE.RingGeometry(b.rings.innerRadius, b.rings.outerRadius, 48);
+            const ringGeom = new THREE.RingGeometry(1.3, 2.3, 64);
             ringGeom.rotateX(Math.PI / 2);
             const ringMat = new THREE.MeshStandardMaterial({
               color: new THREE.Color(b.rings.color),
               side: THREE.DoubleSide,
               transparent: true,
-              opacity: 0.65,
+              opacity: 0.85,
               roughness: 0.8,
+              depthWrite: false,
             });
             const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.name = 'ring';
             group.add(ring);
           }
 
           // Technical 4-Corner Bracket Reticle: ┌ ┐ / └ ┘
           const bracketGroup = new THREE.Group();
           bracketGroup.name = 'reticle';
-          const bracketMat = new THREE.LineBasicMaterial({ color: 0x8797FF, linewidth: 2 });
+          const bracketMat = new THREE.LineBasicMaterial({
+            color: 0x8797FF,
+            linewidth: 2,
+            depthTest: false, // Prevents reticle from clipping inside planet sphere
+          });
           const sz = 1.35;
           const len = 0.45;
 
@@ -476,6 +493,18 @@ export function ThreeViewport({
         const sphereMesh = group.getObjectByName('sphere');
         if (sphereMesh) {
           sphereMesh.scale.set(radius, radius, radius);
+        }
+
+        // Dynamically scale corona to star radius
+        const coronaMesh = group.getObjectByName('corona');
+        if (coronaMesh) {
+          coronaMesh.scale.set(radius * 1.25, radius * 1.25, radius * 1.25);
+        }
+
+        // Dynamically scale planetary rings with planet radius
+        const ringMesh = group.getObjectByName('ring');
+        if (ringMesh) {
+          ringMesh.scale.set(radius, radius, radius);
         }
 
         // Reticle Selection Highlight & Billboard facing camera
@@ -524,7 +553,8 @@ export function ThreeViewport({
             const lineMat = new THREE.LineBasicMaterial({
               color: new THREE.Color(b.color),
               transparent: true,
-              opacity: 0.4,
+              opacity: 0.45,
+              depthWrite: false,
             });
             line = new THREE.Line(lineGeom, lineMat);
             scene.add(line);

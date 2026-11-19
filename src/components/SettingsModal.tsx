@@ -48,11 +48,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   key={q}
                   onClick={() => onUpdateConfig({ renderQuality: q })}
-                  className={`py-1.5 rounded-md capitalize transition font-medium ${
-                    config.renderQuality === q
-                      ? 'bg-[#8797FF]/20 text-[#8797FF] border border-[#8797FF]/40 font-semibold'
-                      : 'text-[#8E9BAD] hover:text-[#E8EEF7]'
-                  }`}
+                  className={`py-1.5 rounded-md capitalize transition font-medium ${config.renderQuality === q
+                    ? 'bg-[#8797FF]/20 text-[#8797FF] border border-[#8797FF]/40 font-semibold'
+                    : 'text-[#8E9BAD] hover:text-[#E8EEF7]'
+                    }`}
                 >
                   {q}
                 </button>
@@ -146,3 +145,4 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
+

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CelestialBody } from '../physics/types';
-import { AU_TO_KM, AU_PER_YR_TO_KM_PER_S } from '../physics/constants';
+import { AU_PER_YR_TO_KM_PER_S } from '../physics/constants';
 import { computeOrbitalElements } from '../physics/orbital';
 import {
   formatDynamicMass,
@@ -8,6 +8,12 @@ import {
   formatRadiusKm,
   formatDynamicEnergy,
   formatDynamicMomentum,
+  type MassUnit,
+  convertMassFromSolar,
+  convertMassToSolar,
+  type DistanceUnit,
+  convertRadiusFromAU,
+  convertRadiusToAU,
 } from '../physics/units';
 import {
   X,
@@ -18,6 +24,9 @@ import {
   Lock,
   Unlock,
   Gauge,
+  Sliders,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 interface InspectorProps {
@@ -32,6 +41,7 @@ interface InspectorProps {
   onToggleFocus: (id: string) => void;
   isFollowing: boolean;
   onToggleFollow: () => void;
+  onOpenEditSimulation?: () => void;
 }
 
 export const Inspector: React.FC<InspectorProps> = ({
@@ -46,11 +56,83 @@ export const Inspector: React.FC<InspectorProps> = ({
   onToggleFocus,
   isFollowing,
   onToggleFollow,
+  onOpenEditSimulation,
 }) => {
   if (!body) return null;
 
   const [activeTab, setActiveTab] = useState<'properties' | 'orbit' | 'advanced'>('properties');
-  const [isEditing, setIsEditing] = useState(false);
+
+  // Selected editable units
+  const [massUnit, setMassUnit] = useState<MassUnit>(() => {
+    if (body.mass >= 0.1) return 'solar';
+    if (body.mass >= 0.0005) return 'jupiter';
+    if (body.mass >= 0.00000005) return 'earth';
+    return 'moon';
+  });
+
+  const [radiusUnit, setRadiusUnit] = useState<DistanceUnit>('km');
+
+  // Local display values to prevent string conversion jitter & scientific 'e' notation
+  const [localMassValue, setLocalMassValue] = useState<string>('');
+  const [localRadiusValue, setLocalRadiusValue] = useState<string>('');
+
+  // Sync local inputs when body or unit changes
+  useEffect(() => {
+    const m = convertMassFromSolar(body.mass, massUnit);
+    setLocalMassValue(m >= 1000 ? Math.round(m).toString() : m >= 1 ? m.toFixed(3) : m.toFixed(4));
+  }, [body.id, body.mass, massUnit]);
+
+  useEffect(() => {
+    const r = convertRadiusFromAU(body.radius, radiusUnit);
+    setLocalRadiusValue(r >= 100 ? Math.round(r).toString() : r.toFixed(2));
+  }, [body.id, body.radius, radiusUnit]);
+
+  // Stepping Mass cleanly without 'e' or negative clamping
+  const handleStepMass = (stepMultiplier: number) => {
+    const current = parseFloat(localMassValue) || convertMassFromSolar(body.mass, massUnit);
+    let delta = 1;
+    if (massUnit === 'solar') delta = current >= 1 ? 0.1 : 0.01;
+    else if (massUnit === 'jupiter') delta = current >= 10 ? 1 : 0.1;
+    else if (massUnit === 'earth') delta = current >= 10 ? 1 : 0.1;
+    else if (massUnit === 'moon') delta = current >= 5 ? 1 : 0.1;
+
+    const next = Math.max(0.001, current + delta * stepMultiplier);
+    const newSolarMass = convertMassToSolar(next, massUnit);
+    setLocalMassValue(next >= 1 ? next.toFixed(3) : next.toFixed(4));
+    onUpdateBody({ ...body, mass: newSolarMass });
+  };
+
+  const handleMassInputChange = (text: string) => {
+    setLocalMassValue(text);
+    const num = parseFloat(text);
+    if (!isNaN(num) && num > 0) {
+      const newSolarMass = convertMassToSolar(num, massUnit);
+      onUpdateBody({ ...body, mass: newSolarMass });
+    }
+  };
+
+  // Stepping Radius cleanly in km
+  const handleStepRadius = (stepMultiplier: number) => {
+    const current = parseFloat(localRadiusValue) || convertRadiusFromAU(body.radius, radiusUnit);
+    let delta = 100;
+    if (radiusUnit === 'km') delta = current >= 10000 ? 500 : current >= 1000 ? 100 : 10;
+    else if (radiusUnit === 'million_km') delta = 0.05;
+    else if (radiusUnit === 'au') delta = 0.001;
+
+    const next = Math.max(1, current + delta * stepMultiplier);
+    const newRadiusAU = convertRadiusToAU(next, radiusUnit);
+    setLocalRadiusValue(next >= 100 ? Math.round(next).toString() : next.toFixed(2));
+    onUpdateBody({ ...body, radius: newRadiusAU });
+  };
+
+  const handleRadiusInputChange = (text: string) => {
+    setLocalRadiusValue(text);
+    const num = parseFloat(text);
+    if (!isNaN(num) && num > 0) {
+      const newAU = convertRadiusToAU(num, radiusUnit);
+      onUpdateBody({ ...body, radius: newAU });
+    }
+  };
 
   // Find primary attractor (heaviest other body)
   let primaryAttractor: CelestialBody | null = null;
@@ -75,7 +157,6 @@ export const Inspector: React.FC<InspectorProps> = ({
       )
     : Math.hypot(body.position.x, body.position.y, body.position.z);
 
-  // Escape velocity from primary: v_esc = sqrt(2 * G * M / r)
   const escapeVelocityKms = primaryAttractor && distToPrimaryAU > 0.001
     ? Math.sqrt((2 * G * primaryAttractor.mass) / distToPrimaryAU) * AU_PER_YR_TO_KM_PER_S
     : 0;
@@ -104,7 +185,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   };
 
   return (
-    <aside className="absolute top-20 right-4 z-30 w-80 bg-[#101722]/95 backdrop-blur-md border border-[#263447] rounded-xl p-4 shadow-2xl text-xs text-[#E8EEF7] select-none font-sans">
+    <aside className="absolute top-20 right-4 z-30 w-84 bg-[#101722]/95 backdrop-blur-md border border-[#263447] rounded-xl p-4 shadow-2xl text-xs text-[#E8EEF7] select-none font-sans">
       {/* Header: Avatar, Name, Type, Close */}
       <div className="flex items-center justify-between pb-3 border-b border-[#263447]">
         <div className="flex items-center gap-2.5 truncate">
@@ -168,69 +249,133 @@ export const Inspector: React.FC<InspectorProps> = ({
         })}
       </div>
 
-      {/* TAB 1: PROPERTIES */}
+      {/* TAB 1: PROPERTIES (DIRECTLY EDITABLE) */}
       {activeTab === 'properties' && (
-        <div className="space-y-2.5 text-xs">
-          <div className="flex items-center justify-between py-1 border-b border-[#263447]/60">
-            <span className="text-[#8E9BAD]">Mass</span>
-            {isEditing ? (
+        <div className="space-y-3 text-xs">
+          {/* Editable Mass */}
+          <div>
+            <div className="flex items-center justify-between text-[#8E9BAD] mb-1">
+              <span className="font-medium">Mass</span>
+              <span className="font-mono text-[#E8EEF7] font-semibold">{formatDynamicMass(body.mass)}</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleStepMass(-1)}
+                className="p-1.5 bg-[#141E2B] hover:bg-[#1f2d3d] text-[#E8EEF7] border border-[#263447] rounded-lg transition"
+                title="Decrease Mass"
+              >
+                <Minus size={12} />
+              </button>
+
               <input
-                type="number"
-                step="any"
-                value={body.mass}
-                onChange={(e) => onUpdateBody({ ...body, mass: Math.max(1e-12, parseFloat(e.target.value) || 0) })}
-                className="w-28 px-1.5 py-0.5 bg-[#141E2B] border border-[#263447] text-right font-mono rounded text-[#E8EEF7] focus:outline-none focus:border-[#8797FF]"
+                type="text"
+                value={localMassValue}
+                onChange={(e) => handleMassInputChange(e.target.value)}
+                className="flex-1 px-2 py-1 bg-[#141E2B] border border-[#263447] text-[#E8EEF7] font-mono rounded-lg focus:outline-none focus:border-[#8797FF]"
               />
-            ) : (
-              <span className="font-mono text-[#E8EEF7] font-medium">{formatDynamicMass(body.mass)}</span>
-            )}
+
+              <button
+                type="button"
+                onClick={() => handleStepMass(1)}
+                className="p-1.5 bg-[#141E2B] hover:bg-[#1f2d3d] text-[#E8EEF7] border border-[#263447] rounded-lg transition"
+                title="Increase Mass"
+              >
+                <Plus size={12} />
+              </button>
+
+              <select
+                value={massUnit}
+                onChange={(e) => setMassUnit(e.target.value as MassUnit)}
+                className="px-2 py-1 bg-[#141E2B] border border-[#263447] text-[#E8EEF7] rounded-lg focus:outline-none cursor-pointer"
+              >
+                <option value="solar">M☉ (Solar)</option>
+                <option value="jupiter">M_Jup</option>
+                <option value="earth">M⊕ (Earth)</option>
+                <option value="moon">M_Moon</option>
+                <option value="trillion_tonnes">Trillion tonnes</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-b border-[#263447]/60">
-            <span className="text-[#8E9BAD]">Radius</span>
-            {isEditing ? (
+          {/* Editable Radius */}
+          <div>
+            <div className="flex items-center justify-between text-[#8E9BAD] mb-1">
+              <span className="font-medium">Physical Radius</span>
+              <span className="font-mono text-[#E8EEF7] font-semibold">{formatRadiusKm(body.radius)}</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleStepRadius(-1)}
+                className="p-1.5 bg-[#141E2B] hover:bg-[#1f2d3d] text-[#E8EEF7] border border-[#263447] rounded-lg transition"
+                title="Decrease Radius"
+              >
+                <Minus size={12} />
+              </button>
+
               <input
-                type="number"
-                step="any"
-                value={body.radius}
-                onChange={(e) => onUpdateBody({ ...body, radius: Math.max(1e-8, parseFloat(e.target.value) || 0) })}
-                className="w-28 px-1.5 py-0.5 bg-[#141E2B] border border-[#263447] text-right font-mono rounded text-[#E8EEF7] focus:outline-none focus:border-[#8797FF]"
+                type="text"
+                value={localRadiusValue}
+                onChange={(e) => handleRadiusInputChange(e.target.value)}
+                className="flex-1 px-2 py-1 bg-[#141E2B] border border-[#263447] text-[#E8EEF7] font-mono rounded-lg focus:outline-none focus:border-[#8797FF]"
               />
-            ) : (
-              <span className="font-mono text-[#E8EEF7] font-medium">{formatRadiusKm(body.radius)}</span>
-            )}
+
+              <button
+                type="button"
+                onClick={() => handleStepRadius(1)}
+                className="p-1.5 bg-[#141E2B] hover:bg-[#1f2d3d] text-[#E8EEF7] border border-[#263447] rounded-lg transition"
+                title="Increase Radius"
+              >
+                <Plus size={12} />
+              </button>
+
+              <select
+                value={radiusUnit}
+                onChange={(e) => setRadiusUnit(e.target.value as DistanceUnit)}
+                className="px-2 py-1 bg-[#141E2B] border border-[#263447] text-[#E8EEF7] rounded-lg focus:outline-none cursor-pointer"
+              >
+                <option value="km">km</option>
+                <option value="million_km">M km</option>
+                <option value="au">AU</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-b border-[#263447]/60">
-            <span className="text-[#8E9BAD]">Position (x, y, z)</span>
-            <span className="font-mono text-[#E8EEF7] text-[11px]">
-              {body.position.x.toFixed(2)}, {body.position.y.toFixed(2)}, {body.position.z.toFixed(2)} AU
-            </span>
+          {/* Position (x, y, z) */}
+          <div>
+            <span className="text-[#8E9BAD] block mb-1">Position Vector [X, Y, Z] (AU)</span>
+            <div className="grid grid-cols-3 gap-1 font-mono text-[11px]">
+              {(['x', 'y', 'z'] as const).map((axis) => (
+                <div key={axis} className="bg-[#141E2B] border border-[#263447] rounded-lg px-2 py-1 text-center">
+                  <span className="text-[#8E9BAD]">{axis}:</span>{' '}
+                  <span className="text-[#E8EEF7] font-medium">{body.position[axis].toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-b border-[#263447]/60">
-            <span className="text-[#8E9BAD]">Velocity (vx, vy, vz)</span>
-            <span className="font-mono text-[#5FD5E8] text-[11px]">
-              {Math.round(body.velocity.x * AU_TO_KM / (365.25 * 86400) * 1000).toLocaleString()},{' '}
-              {Math.round(body.velocity.y * AU_TO_KM / (365.25 * 86400) * 1000).toLocaleString()},{' '}
-              {Math.round(body.velocity.z * AU_TO_KM / (365.25 * 86400) * 1000).toLocaleString()} m/s
-            </span>
+          {/* Velocity (vx, vy, vz) */}
+          <div>
+            <span className="text-[#8E9BAD] block mb-1">Velocity Vector [Vx, Vy, Vz] (AU/yr)</span>
+            <div className="grid grid-cols-3 gap-1 font-mono text-[11px]">
+              {(['x', 'y', 'z'] as const).map((axis) => (
+                <div key={axis} className="bg-[#141E2B] border border-[#263447] rounded-lg px-2 py-1 text-center">
+                  <span className="text-[#8E9BAD]">v{axis}:</span>{' '}
+                  <span className="text-[#5FD5E8] font-medium">{body.velocity[axis].toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center justify-between py-1">
-            <span className="text-[#8E9BAD]">Speed</span>
+          {/* Speed */}
+          <div className="flex items-center justify-between py-1 bg-[#141E2B]/50 px-2 rounded-lg border border-[#263447]/60">
+            <span className="text-[#8E9BAD]">Orbital Speed</span>
             <span className="font-mono text-[#E8EEF7] font-semibold">
               {speedKms.toFixed(2)} km/s <span className="text-[#8E9BAD] font-normal">({Math.round(speedMs).toLocaleString()} m/s)</span>
             </span>
-          </div>
-
-          <div className="pt-1 flex justify-end">
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="text-[11px] text-[#8797FF] hover:underline"
-            >
-              {isEditing ? 'Save Changes' : 'Edit Numerical Values'}
-            </button>
           </div>
         </div>
       )}
@@ -335,14 +480,13 @@ export const Inspector: React.FC<InspectorProps> = ({
         </div>
       )}
 
-      {/* Quick Actions Grid (Matches Reference Image) */}
+      {/* Quick Actions Grid */}
       <div className="mt-4 pt-3 border-t border-[#263447] space-y-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8E9BAD] block">
           Quick Actions
         </span>
 
         <div className="grid grid-cols-2 gap-1.5">
-          {/* 1. Focus */}
           <button
             onClick={() => onToggleFocus(body.id)}
             className={`py-2 px-2.5 rounded-lg border text-xs flex items-center justify-center gap-1.5 transition font-medium ${
@@ -355,7 +499,6 @@ export const Inspector: React.FC<InspectorProps> = ({
             <span>Focus</span>
           </button>
 
-          {/* 2. Follow */}
           <button
             onClick={onToggleFollow}
             className={`py-2 px-2.5 rounded-lg border text-xs flex items-center justify-center gap-1.5 transition font-medium ${
@@ -368,7 +511,6 @@ export const Inspector: React.FC<InspectorProps> = ({
             <span>Follow</span>
           </button>
 
-          {/* 3. Duplicate */}
           <button
             onClick={() => onDuplicateBody(body)}
             className="py-2 px-2.5 bg-[#141E2B] border border-[#263447] hover:bg-[#1a2636] text-[#E8EEF7] rounded-lg text-xs flex items-center justify-center gap-1.5 transition font-medium"
@@ -377,7 +519,6 @@ export const Inspector: React.FC<InspectorProps> = ({
             <span>Duplicate</span>
           </button>
 
-          {/* 4. Remove */}
           <button
             onClick={() => onDeleteBody(body.id)}
             className="py-2 px-2.5 bg-[#141E2B] border border-[#263447] hover:bg-rose-950/40 hover:border-rose-600/50 text-rose-300 rounded-lg text-xs flex items-center justify-center gap-1.5 transition font-medium"
@@ -386,6 +527,16 @@ export const Inspector: React.FC<InspectorProps> = ({
             <span>Remove</span>
           </button>
         </div>
+
+        {onOpenEditSimulation && (
+          <button
+            onClick={onOpenEditSimulation}
+            className="w-full mt-1.5 py-1.5 bg-[#141E2B] hover:bg-[#8797FF]/20 text-[#8797FF] hover:text-white border border-[#263447] hover:border-[#8797FF]/50 rounded-lg transition flex items-center justify-center gap-1.5 text-xs font-medium"
+          >
+            <Sliders size={13} />
+            <span>Edit Global Simulation Parameters</span>
+          </button>
+        )}
       </div>
     </aside>
   );
