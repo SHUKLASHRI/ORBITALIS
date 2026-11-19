@@ -3,6 +3,9 @@
 > **REAL-TIME COMPUTATIONAL ASTROPHYSICS LABORATORY**  
 > An interactive three-dimensional gravitational simulation platform that models the motion of multiple celestial bodies using Newtonian mechanics and numerical integration.
 
+🌐 **Live Web Application:** [https://shuklashri.github.io/ORBITALIS/](https://shuklashri.github.io/ORBITALIS/)  
+📦 **GitHub Repository:** [https://github.com/SHUKLASHRI/ORBITALIS](https://github.com/SHUKLASHRI/ORBITALIS)
+
 ---
 
 ## 🌟 Overview & Key Features
