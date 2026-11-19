@@ -180,7 +180,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
         <div className="pointer-events-auto w-76 bg-[#101722]/95 backdrop-blur-md border border-[#263447] rounded-xl p-3 shadow-2xl text-xs text-[#E8EEF7]">
           {/* Flyout Header */}
           <div className="flex items-center justify-between border-b border-[#263447] pb-2 mb-2.5">
-            <span className="font-semibold text-xs tracking-wider uppercase text-[#8E9BAD]">
+            <span className="font-display font-semibold text-xs tracking-[0.14em] uppercase text-[#E8EEF7]">
               {activeFlyout === 'hierarchy' && `Celestial Hierarchy (${bodies.length})`}
               {activeFlyout === 'add' && 'Create Celestial Body'}
               {activeFlyout === 'presets' && 'Astrophysics Scenarios'}
@@ -361,7 +361,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-1.5 bg-[#8797FF] hover:bg-[#97a5ff] text-[#080B12] font-semibold text-xs rounded-lg transition"
+                className="w-full py-1.5 bg-[#8797FF] hover:bg-[#97a5ff] text-[#080B12] font-medium text-xs rounded-lg transition tracking-wide font-sans shadow-md"
               >
                 Insert Celestial Body
               </button>
@@ -387,10 +387,10 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-xs">{p.name}</span>
-                      <span className="text-[10px] text-[#8797FF] font-mono">{p.bodies.length} bodies</span>
+                      <span className="font-display font-semibold text-xs tracking-wide text-[#E8EEF7]">{p.name}</span>
+                      <span className="text-[10px] text-[#8797FF] font-mono tabular-nums">{p.bodies.length} bodies</span>
                     </div>
-                    <p className="text-[11px] text-[#8E9BAD] mt-0.5 line-clamp-2 leading-tight">
+                    <p className="text-[11px] text-[#8E9BAD] mt-0.5 line-clamp-2 leading-tight font-sans">
                       {p.description}
                     </p>
                   </div>

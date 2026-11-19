@@ -27,10 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
             <path d="M3 13c3-4 15-4 18 0" strokeDasharray="1 0" />
             <ellipse cx="12" cy="12" rx="10" ry="4" strokeLinecap="round" />
           </svg>
-          <span className="font-bold tracking-widest text-[#E8EEF7] text-sm">ORBITALIS</span>
+          <span className="font-display font-bold tracking-[0.28em] text-[#E8EEF7] text-sm pl-[0.28em] select-none">ORBITALIS</span>
         </div>
         <div className="h-3.5 w-px bg-[#263447]" />
-        <span className="text-[#8E9BAD] text-xs font-normal">N-Body Gravity Simulator</span>
+        <span className="font-sans text-[#8E9BAD] text-[11px] font-normal tracking-[0.14em] uppercase">N-Body Gravity Simulator</span>
       </div>
 
       {/* Center Navigation Pills with Prominent "Edit Simulation" Option */}

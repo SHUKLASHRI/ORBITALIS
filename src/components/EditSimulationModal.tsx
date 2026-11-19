@@ -53,7 +53,7 @@ export const EditSimulationModal: React.FC<EditSimulationModalProps> = ({
       <div className="w-full max-w-xl bg-[#101722] border border-[#263447] rounded-xl shadow-2xl overflow-hidden text-xs text-[#E8EEF7]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 bg-[#141E2B] border-b border-[#263447]">
-          <span className="font-semibold text-sm flex items-center gap-2">
+          <span className="font-display font-semibold text-sm tracking-[0.1em] text-[#E8EEF7] flex items-center gap-2">
             <Sliders size={16} className="text-[#8797FF]" />
             Edit Simulation & Physics Parameters
           </span>
@@ -70,7 +70,7 @@ export const EditSimulationModal: React.FC<EditSimulationModalProps> = ({
           {/* 1. GRAVITATIONAL DYNAMICS */}
           <div className="p-3.5 bg-[#141E2B]/80 rounded-xl border border-[#263447] space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-xs text-[#8797FF] flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="font-display font-semibold text-xs text-[#8797FF] flex items-center gap-1.5 uppercase tracking-[0.14em]">
                 Gravitational Parameters
               </span>
               <button
@@ -163,7 +163,7 @@ export const EditSimulationModal: React.FC<EditSimulationModalProps> = ({
 
           {/* 2. NUMERICAL INTEGRATOR & TIME ENGINE */}
           <div className="p-3.5 bg-[#141E2B]/80 rounded-xl border border-[#263447] space-y-3">
-            <span className="font-semibold text-xs text-[#53D6A0] flex items-center gap-1.5 uppercase tracking-wider">
+            <span className="font-display font-semibold text-xs text-[#53D6A0] flex items-center gap-1.5 uppercase tracking-[0.14em]">
               <Cpu size={14} /> Integration Algorithm & Time Engine
             </span>
 
@@ -231,7 +231,7 @@ export const EditSimulationModal: React.FC<EditSimulationModalProps> = ({
 
           {/* 3. VISUAL LAYERS & OBSERVATORY SETTINGS */}
           <div className="p-3.5 bg-[#141E2B]/80 rounded-xl border border-[#263447] space-y-2.5">
-            <span className="font-semibold text-xs text-[#5FD5E8] flex items-center gap-1.5 uppercase tracking-wider">
+            <span className="font-display font-semibold text-xs text-[#5FD5E8] flex items-center gap-1.5 uppercase tracking-[0.14em]">
               <Layers size={14} /> Viewport & Visualization Layers
             </span>
 
@@ -317,3 +317,4 @@ export const EditSimulationModal: React.FC<EditSimulationModalProps> = ({
     </div>
   );
 };
+

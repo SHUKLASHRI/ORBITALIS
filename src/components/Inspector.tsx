@@ -209,8 +209,8 @@ export const Inspector: React.FC<InspectorProps> = ({
           </div>
 
           <div className="truncate">
-            <h2 className="font-bold text-sm text-[#E8EEF7] truncate">{body.name}</h2>
-            <p className="text-[11px] text-[#8E9BAD] capitalize">
+            <h2 className="font-display font-semibold text-sm tracking-wider text-[#E8EEF7] truncate">{body.name}</h2>
+            <p className="font-sans text-[11px] text-[#8E9BAD] capitalize tracking-wide">
               {body.type} • <span className="text-[#8797FF] font-medium">Selected</span>
             </p>
           </div>
@@ -482,7 +482,7 @@ export const Inspector: React.FC<InspectorProps> = ({
 
       {/* Quick Actions Grid */}
       <div className="mt-4 pt-3 border-t border-[#263447] space-y-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8E9BAD] block">
+        <span className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8E9BAD] block">
           Quick Actions
         </span>
 

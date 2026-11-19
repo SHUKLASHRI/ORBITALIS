@@ -23,7 +23,7 @@ export const ScenariosModal: React.FC<ScenariosModalProps> = ({
       <div className="w-full max-w-2xl bg-[#101722] border border-[#263447] rounded-xl shadow-2xl overflow-hidden text-xs text-[#E8EEF7]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 bg-[#141E2B] border-b border-[#263447]">
-          <span className="font-semibold text-sm flex items-center gap-2">
+          <span className="font-display font-semibold text-sm tracking-[0.1em] text-[#E8EEF7] flex items-center gap-2">
             <Box size={16} className="text-[#8797FF]" />
             Astrophysics Scenarios & Experiments Library
           </span>
@@ -54,22 +54,22 @@ export const ScenariosModal: React.FC<ScenariosModalProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-sm flex items-center gap-2 text-white">
-                      <span className="text-[#8797FF]">0{idx + 1}.</span> {p.name}
+                    <span className="font-display font-semibold text-sm tracking-wide flex items-center gap-2 text-white">
+                      <span className="font-mono text-[#8797FF] font-semibold">0{idx + 1}.</span> {p.name}
                     </span>
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#101722] border border-[#263447] text-[#5FD5E8] flex items-center gap-1">
+                    <span className="text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-full bg-[#101722] border border-[#263447] text-[#5FD5E8] flex items-center gap-1">
                       <Orbit size={11} />
                       {p.bodies.length} bodies
                     </span>
                   </div>
 
-                  <p className="text-xs text-[#8E9BAD] leading-relaxed line-clamp-3 mb-2">
+                  <p className="font-sans text-xs text-[#8E9BAD] leading-relaxed line-clamp-3 mb-2">
                     {p.description}
                   </p>
                 </div>
 
                 {p.objective && (
-                  <div className="text-[11px] text-[#E8B86B] font-mono pt-2 border-t border-[#263447]/60 truncate">
+                  <div className="text-[11px] text-[#E8B86B] font-mono tabular-nums pt-2 border-t border-[#263447]/60 truncate">
                     OBJ: {p.objective}
                   </div>
                 )}

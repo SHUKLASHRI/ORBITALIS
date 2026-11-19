@@ -57,7 +57,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
           <select
             value={config.timeMultiplier}
             onChange={(e) => onUpdateConfig({ timeMultiplier: parseFloat(e.target.value) })}
-            className="appearance-none bg-[#141E2B] border border-[#263447] text-[#E8EEF7] text-xs font-medium pl-2.5 pr-6 py-1.5 rounded-lg focus:outline-none focus:border-[#8797FF] cursor-pointer"
+            className="appearance-none bg-[#141E2B] border border-[#263447] text-[#E8EEF7] text-xs font-mono tabular-nums font-medium pl-2.5 pr-6 py-1.5 rounded-lg focus:outline-none focus:border-[#8797FF] cursor-pointer"
           >
             {speedOptions.map((spd) => (
               <option key={spd} value={spd}>
@@ -81,7 +81,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
         </div>
 
         {/* Live Day Counter */}
-        <div className="flex items-center gap-1.5 font-mono text-xs text-[#E8EEF7] pl-1 border-l border-[#263447]">
+        <div className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-[#E8EEF7] pl-1 border-l border-[#263447] tracking-wide">
           <span>Day {currentDays}</span>
         </div>
 

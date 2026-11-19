@@ -26,7 +26,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <div className="w-full max-w-md bg-[#101722] border border-[#263447] rounded-xl shadow-2xl overflow-hidden text-xs text-[#E8EEF7]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#141E2B] border-b border-[#263447]">
-          <span className="font-semibold text-sm flex items-center gap-2">
+          <span className="font-display font-semibold text-sm tracking-[0.1em] text-[#E8EEF7] flex items-center gap-2">
             <Sliders size={16} className="text-[#8797FF]" />
             Simulation & Viewport Settings
           </span>
@@ -42,13 +42,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-4 space-y-3.5">
           {/* Graphics Quality */}
           <div>
-            <label className="text-[#8E9BAD] block mb-1 font-medium">Graphics Render Quality</label>
+            <label className="font-display text-xs tracking-[0.12em] text-[#8E9BAD] uppercase block mb-1 font-semibold">
+              Graphics Render Quality
+            </label>
             <div className="grid grid-cols-3 gap-1.5 bg-[#141E2B] p-1 rounded-lg border border-[#263447]">
               {(['performance', 'balanced', 'high'] as RenderQuality[]).map((q) => (
                 <button
                   key={q}
                   onClick={() => onUpdateConfig({ renderQuality: q })}
-                  className={`py-1.5 rounded-md capitalize transition font-medium ${config.renderQuality === q
+                  className={`py-1.5 rounded-md capitalize transition font-sans text-xs font-medium ${config.renderQuality === q
                     ? 'bg-[#8797FF]/20 text-[#8797FF] border border-[#8797FF]/40 font-semibold'
                     : 'text-[#8E9BAD] hover:text-[#E8EEF7]'
                     }`}
@@ -61,7 +63,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Viewport Layers Toggles */}
           <div className="space-y-2 pt-2 border-t border-[#263447]">
-            <span className="text-[#8E9BAD] block font-medium">Viewport Visualization Layers</span>
+            <span className="font-display text-xs tracking-[0.12em] text-[#8E9BAD] uppercase block font-semibold">
+              Viewport Visualization Layers
+            </span>
 
             <label className="flex items-center justify-between cursor-pointer py-1">
               <span>Orbital Trajectory Trails</span>

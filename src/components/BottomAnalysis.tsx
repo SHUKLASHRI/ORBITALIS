@@ -107,7 +107,7 @@ export const BottomAnalysis: React.FC<BottomAnalysisProps> = ({
 
     // Y-Axis labels (Energy J)
     ctx.fillStyle = '#8E9BAD';
-    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.font = '9px "IBM Plex Mono", "JetBrains Mono", monospace';
     ctx.fillText(formatAxisLabel(maxVal), 2, padTop + 8);
     ctx.fillText('0', 2, getY(0));
     ctx.fillText(formatAxisLabel(minVal), 2, height - padBottom);
@@ -127,7 +127,7 @@ export const BottomAnalysis: React.FC<BottomAnalysisProps> = ({
       >
         {/* Header Ribbon */}
         <div className="h-9 px-3 bg-[#141E2B]/80 border-b border-[#263447] flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5 font-semibold text-[#E8EEF7]">
+          <div className="flex items-center gap-1.5 font-display font-semibold tracking-[0.14em] uppercase text-xs text-[#E8EEF7]">
             <LineChart size={14} className="text-[#8797FF]" />
             <span>Analysis</span>
           </div>
