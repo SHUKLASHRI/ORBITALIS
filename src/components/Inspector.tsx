@@ -1,16 +1,18 @@
 import React from 'react';
 import type { CelestialBody } from '../physics/types';
 import { AU_TO_KM, AU_PER_YR_TO_KM_PER_S } from '../physics/constants';
+import { computeOrbitalElements } from '../physics/orbital';
 import {
   X,
   Target,
   Trash2,
   Lock,
   Unlock,
-  Zap,
   RotateCw,
   Gauge,
   Sliders,
+  Compass,
+  Activity,
 } from 'lucide-react';
 
 interface InspectorProps {
@@ -36,40 +38,55 @@ export const Inspector: React.FC<InspectorProps> = ({
 }) => {
   if (!body) return null;
 
+  // Find primary attractor: heaviest body in the system other than this body
+  let primaryAttractor: CelestialBody | null = null;
+  for (const b of allBodies) {
+    if (b.id !== body.id && (!primaryAttractor || b.mass > primaryAttractor.mass)) {
+      primaryAttractor = b;
+    }
+  }
+
+  // Compute exact Keplerian orbital elements relative to primary
+  const orbital = primaryAttractor
+    ? computeOrbitalElements(body, primaryAttractor, G)
+    : null;
+
   const speedAU = Math.hypot(body.velocity.x, body.velocity.y, body.velocity.z);
   const speedKms = speedAU * AU_PER_YR_TO_KM_PER_S;
   const radiusKm = body.radius * AU_TO_KM;
-  const distFromOrigin = Math.hypot(body.position.x, body.position.y, body.position.z);
   const massEarth = body.mass * 332946;
 
-  // Circularize orbit around the most massive neighbor
+  // Relative distance to primary
+  const distToPrimary = primaryAttractor
+    ? Math.hypot(
+        body.position.x - primaryAttractor.position.x,
+        body.position.y - primaryAttractor.position.y,
+        body.position.z - primaryAttractor.position.z
+      )
+    : Math.hypot(body.position.x, body.position.y, body.position.z);
+
+  // Circularize orbit around the primary attractor
   const handleCircularize = () => {
-    let heaviest: CelestialBody | null = null;
-    for (const b of allBodies) {
-      if (b.id !== body.id && (!heaviest || b.mass > heaviest.mass)) {
-        heaviest = b;
-      }
-    }
+    if (!primaryAttractor) return;
 
-    if (heaviest) {
-      const dx = body.position.x - heaviest.position.x;
-      const dy = body.position.y - heaviest.position.y;
-      const dz = body.position.z - heaviest.position.z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const dx = body.position.x - primaryAttractor.position.x;
+    const dy = body.position.y - primaryAttractor.position.y;
+    const dz = body.position.z - primaryAttractor.position.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-      if (dist > 0.0001) {
-        const circSpeed = Math.sqrt((G * heaviest.mass) / dist);
-        // Perpendicular vector in X-Z orbital plane
-        const vx = heaviest.velocity.x + (-dz / dist) * circSpeed;
-        const vy = heaviest.velocity.y;
-        const vz = heaviest.velocity.z + (dx / dist) * circSpeed;
+    if (dist > 0.0001) {
+      // Circular speed: v_circ = sqrt(G * M / r)
+      const circSpeed = Math.sqrt((G * (primaryAttractor.mass + body.mass)) / dist);
+      // Perpendicular tangent vector in the X-Z plane
+      const vx = primaryAttractor.velocity.x + (-dz / dist) * circSpeed;
+      const vy = primaryAttractor.velocity.y;
+      const vz = primaryAttractor.velocity.z + (dx / dist) * circSpeed;
 
-        onUpdateBody({
-          ...body,
-          velocity: { x: vx, y: vy, z: vz },
-          trail: [],
-        });
-      }
+      onUpdateBody({
+        ...body,
+        velocity: { x: vx, y: vy, z: vz },
+        trail: [],
+      });
     }
   };
 
@@ -96,12 +113,12 @@ export const Inspector: React.FC<InspectorProps> = ({
   };
 
   return (
-    <aside className="absolute top-16 right-4 z-30 w-80 bg-slate-950/90 backdrop-blur-md border border-cyan-500/30 rounded-2xl p-4 shadow-2xl shadow-cyan-950/50 space-y-3.5 text-xs text-slate-200 max-h-[calc(100vh-160px)] overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+    <aside className="absolute top-12 right-2 z-30 w-80 bg-[#090d16] border border-[#1b2230] p-3 text-xs text-[#c9d1d9] max-h-[calc(100vh-140px)] overflow-y-auto select-none font-mono">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between border-b border-[#1b2230] pb-2">
         <div className="flex items-center gap-2 truncate">
           <div
-            className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-md"
+            className="w-3 h-3 border border-[#30363d] shrink-0"
             style={{ backgroundColor: body.color }}
           />
           <div className="truncate">
@@ -109,64 +126,119 @@ export const Inspector: React.FC<InspectorProps> = ({
               type="text"
               value={body.name}
               onChange={(e) => onUpdateBody({ ...body, name: e.target.value })}
-              className="bg-transparent font-bold text-sm text-slate-100 hover:bg-slate-900 px-1 py-0.5 rounded focus:outline-none focus:ring-1 focus:ring-cyan-400 truncate w-full"
+              className="bg-transparent font-bold text-xs text-[#f0f6fc] hover:bg-[#161b22] px-1 py-0.5 border border-transparent focus:border-[#388bfd] focus:outline-none truncate w-full"
             />
-            <span className="text-[10px] text-cyan-400 uppercase font-mono tracking-wider">
-              {body.type}
-            </span>
+            <div className="text-[10px] text-[#58a6ff] uppercase tracking-wider">
+              {body.type} {body.isFixed ? '• ANCHORED' : ''}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => onToggleFocus(body.id)}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1 border transition ${
               isFocused
-                ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                : 'border-slate-800 text-slate-400 hover:bg-slate-800'
+                ? 'bg-[#1f2937] border-[#388bfd] text-[#58a6ff]'
+                : 'border-[#21262d] text-[#8b949e] hover:bg-[#161b22] hover:text-[#f0f6fc]'
             }`}
-            title={isFocused ? 'Unlock Camera Focus' : 'Lock Camera to Body'}
+            title={isFocused ? 'Unlock Camera Tracking' : 'Track Body with Camera'}
           >
-            <Target size={14} />
+            <Target size={13} />
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+            className="p-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22] border border-[#21262d] transition"
+            title="Close Telemetry Panel"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       </div>
 
-      {/* Numerical Telemetry Metrics */}
-      <div className="grid grid-cols-2 gap-2 text-center font-mono">
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
-          <span className="text-[9px] uppercase font-sans text-slate-400 block">Orbital Speed</span>
-          <div className="text-xs font-bold text-cyan-300">{speedKms.toFixed(2)} km/s</div>
-          <span className="text-[9px] text-slate-500">({speedAU.toFixed(2)} AU/yr)</span>
+      {/* Primary Kinematic Telemetry */}
+      <div className="grid grid-cols-2 gap-1.5 pt-2 text-center">
+        <div className="bg-[#0d111a] border border-[#1b2230] p-1.5">
+          <span className="text-[9px] uppercase text-[#8b949e] block">Speed</span>
+          <div className="text-xs font-bold text-[#58a6ff]">{speedKms.toFixed(2)} km/s</div>
+          <span className="text-[9px] text-[#484f58]">({speedAU.toFixed(3)} AU/yr)</span>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
-          <span className="text-[9px] uppercase font-sans text-slate-400 block">Distance to Core</span>
-          <div className="text-xs font-bold text-purple-300">{distFromOrigin.toFixed(3)} AU</div>
-          <span className="text-[9px] text-slate-500">
-            {(distFromOrigin * AU_TO_KM / 1e6).toFixed(1)} M km
+        <div className="bg-[#0d111a] border border-[#1b2230] p-1.5">
+          <span className="text-[9px] uppercase text-[#8b949e] block">Dist to Primary</span>
+          <div className="text-xs font-bold text-[#f0f6fc]">{distToPrimary.toFixed(3)} AU</div>
+          <span className="text-[9px] text-[#484f58]">
+            {(distToPrimary * AU_TO_KM / 1e6).toFixed(1)}M km
           </span>
         </div>
       </div>
 
-      {/* Editable Physical Properties */}
-      <div className="space-y-2.5 pt-1">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-          <Sliders size={11} className="text-cyan-400" />
-          Physical Properties
+      {/* Keplerian Orbital Elements (if attractor exists) */}
+      {orbital && primaryAttractor && (
+        <div className="pt-2 border-t border-[#1b2230] space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] text-[#8b949e] uppercase font-bold">
+            <span className="flex items-center gap-1">
+              <Compass size={11} className="text-[#388bfd]" /> Keplerian Elements
+            </span>
+            <span className={orbital.isBound ? 'text-[#3fb950]' : 'text-[#d29922]'}>
+              {orbital.isBound ? 'BOUND ORBIT' : 'ESCAPE TRAJECTORY'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1 text-[10px] bg-[#0d111a] border border-[#1b2230] p-1.5">
+            <div>
+              <span className="text-[#8b949e]">Semi-Major (a):</span>{' '}
+              <span className="text-[#f0f6fc] font-bold">{orbital.semiMajorAxis.toFixed(3)} AU</span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Eccentricity (e):</span>{' '}
+              <span className="text-[#58a6ff] font-bold">{orbital.eccentricity.toFixed(4)}</span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Period (T):</span>{' '}
+              <span className="text-[#f0f6fc]">
+                {orbital.periodYears !== null ? `${orbital.periodYears.toFixed(2)} yr` : '∞ (escape)'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Period (days):</span>{' '}
+              <span className="text-[#f0f6fc]">
+                {orbital.periodDays !== null ? `${Math.round(orbital.periodDays)} d` : '—'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Periapsis:</span>{' '}
+              <span className="text-[#f0f6fc]">{orbital.periapsis.toFixed(3)} AU</span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Apoapsis:</span>{' '}
+              <span className="text-[#f0f6fc]">
+                {orbital.apoapsis !== null ? `${orbital.apoapsis.toFixed(3)} AU` : '∞'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Inclination:</span>{' '}
+              <span className="text-[#f0f6fc]">{orbital.inclinationDeg.toFixed(1)}°</span>
+            </div>
+            <div>
+              <span className="text-[#8b949e]">Specific Energy:</span>{' '}
+              <span className="text-[#f0f6fc]">{orbital.specificEnergy.toExponential(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editable Physical Parameters */}
+      <div className="pt-2 border-t border-[#1b2230] space-y-2">
+        <span className="text-[10px] uppercase font-bold text-[#8b949e] flex items-center gap-1">
+          <Sliders size={11} className="text-[#388bfd]" /> Physical Parameters
         </span>
 
         {/* Mass */}
         <div>
-          <div className="flex justify-between text-slate-300 mb-0.5">
-            <span>Mass</span>
-            <span className="font-mono text-cyan-300">
+          <div className="flex justify-between text-[#8b949e] mb-0.5 text-[10px]">
+            <span>MASS (M☉ / M⊕)</span>
+            <span className="text-[#58a6ff]">
               {body.mass >= 0.01 ? `${body.mass.toFixed(4)} M☉` : `${massEarth.toFixed(3)} M⊕`}
             </span>
           </div>
@@ -175,15 +247,15 @@ export const Inspector: React.FC<InspectorProps> = ({
             step="any"
             value={body.mass}
             onChange={(e) => onUpdateBody({ ...body, mass: Math.max(1e-12, parseFloat(e.target.value) || 0) })}
-            className="w-full px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-400"
+            className="w-full px-2 py-1 bg-[#0d111a] border border-[#21262d] text-xs text-[#f0f6fc] focus:outline-none focus:border-[#388bfd]"
           />
         </div>
 
         {/* Physical Radius */}
         <div>
-          <div className="flex justify-between text-slate-300 mb-0.5">
-            <span>Physical Radius</span>
-            <span className="font-mono text-pink-300">
+          <div className="flex justify-between text-[#8b949e] mb-0.5 text-[10px]">
+            <span>PHYSICAL RADIUS (KM)</span>
+            <span className="text-[#f0f6fc]">
               {radiusKm > 1000000 ? `${(radiusKm / 1e6).toFixed(2)}M km` : `${Math.round(radiusKm).toLocaleString()} km`}
             </span>
           </div>
@@ -192,15 +264,15 @@ export const Inspector: React.FC<InspectorProps> = ({
             step="any"
             value={body.radius}
             onChange={(e) => onUpdateBody({ ...body, radius: Math.max(1e-8, parseFloat(e.target.value) || 0) })}
-            className="w-full px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-400"
+            className="w-full px-2 py-1 bg-[#0d111a] border border-[#21262d] text-xs text-[#f0f6fc] focus:outline-none focus:border-[#388bfd]"
           />
         </div>
 
-        {/* 3D Visual Rendering Radius */}
+        {/* 3D Visual Scale */}
         <div>
-          <div className="flex justify-between text-slate-300 mb-0.5">
-            <span>3D Visual Scale (AU)</span>
-            <span className="font-mono text-amber-300">{body.visualRadius.toFixed(2)} AU</span>
+          <div className="flex justify-between text-[#8b949e] mb-0.5 text-[10px]">
+            <span>VIEWPORT VISUAL SCALE</span>
+            <span className="text-[#e3b341]">{body.visualRadius.toFixed(2)} AU</span>
           </div>
           <input
             type="range"
@@ -209,101 +281,97 @@ export const Inspector: React.FC<InspectorProps> = ({
             step="0.02"
             value={body.visualRadius}
             onChange={(e) => onUpdateBody({ ...body, visualRadius: parseFloat(e.target.value) })}
-            className="w-full accent-amber-400 h-1.5 bg-slate-800 rounded cursor-pointer"
+            className="w-full accent-[#388bfd] h-1 bg-[#21262d] cursor-pointer"
           />
         </div>
 
-        {/* 3D Coordinates (X, Y, Z in AU) */}
-        <div className="pt-1">
-          <span className="text-[10px] text-slate-400 block mb-1">Position Vector (AU)</span>
-          <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
-            {['x', 'y', 'z'].map((axis) => (
-              <div key={axis} className="bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-1">
-                <span className="text-[9px] text-slate-500 uppercase">{axis}: </span>
-                <span className="text-slate-200 font-bold">
-                  {body.position[axis as 'x' | 'y' | 'z'].toFixed(2)}
-                </span>
+        {/* Position Vector */}
+        <div>
+          <span className="text-[10px] text-[#8b949e] block mb-0.5">POSITION [X, Y, Z] (AU)</span>
+          <div className="grid grid-cols-3 gap-1">
+            {(['x', 'y', 'z'] as const).map((axis) => (
+              <div key={axis} className="bg-[#0d111a] border border-[#21262d] px-1 py-0.5 text-center">
+                <span className="text-[9px] text-[#484f58] uppercase">{axis}: </span>
+                <span className="text-[#f0f6fc]">{body.position[axis].toFixed(2)}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 3D Velocity (vx, vy, vz in AU/yr) */}
+        {/* Velocity Vector */}
         <div>
-          <span className="text-[10px] text-slate-400 block mb-1">Velocity Vector (AU/yr)</span>
-          <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
-            {['x', 'y', 'z'].map((axis) => (
-              <div key={axis} className="bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-1">
-                <span className="text-[9px] text-slate-500 uppercase">v{axis}: </span>
-                <span className="text-cyan-300 font-bold">
-                  {body.velocity[axis as 'x' | 'y' | 'z'].toFixed(2)}
-                </span>
+          <span className="text-[10px] text-[#8b949e] block mb-0.5">VELOCITY [VX, VY, VZ] (AU/YR)</span>
+          <div className="grid grid-cols-3 gap-1">
+            {(['x', 'y', 'z'] as const).map((axis) => (
+              <div key={axis} className="bg-[#0d111a] border border-[#21262d] px-1 py-0.5 text-center">
+                <span className="text-[9px] text-[#484f58] uppercase">v{axis}: </span>
+                <span className="text-[#58a6ff]">{body.velocity[axis].toFixed(2)}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Orbital Mechanics Tools */}
-      <div className="pt-2 border-t border-slate-800 space-y-2">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-          <Zap size={11} className="text-amber-400" />
-          Orbital Adjusters
+      {/* Orbital Velocity Operations */}
+      <div className="pt-2 border-t border-[#1b2230] space-y-1.5">
+        <span className="text-[10px] uppercase font-bold text-[#8b949e] flex items-center gap-1">
+          <Activity size={11} className="text-[#388bfd]" /> Orbital Maneuvers
         </span>
 
-        <div className="grid grid-cols-3 gap-1 font-mono text-[11px]">
+        <div className="grid grid-cols-3 gap-1 text-[10px]">
           <button
             onClick={() => handleScaleVelocity(1.15)}
-            className="py-1 px-1.5 bg-slate-900 border border-slate-800 hover:border-cyan-500 rounded-xl text-slate-300 hover:text-cyan-200 transition"
+            className="py-1 px-1 bg-[#0d111a] border border-[#21262d] hover:border-[#388bfd] text-[#c9d1d9] hover:text-[#f0f6fc] transition"
           >
             +15% Spd
           </button>
           <button
             onClick={() => handleScaleVelocity(0.85)}
-            className="py-1 px-1.5 bg-slate-900 border border-slate-800 hover:border-cyan-500 rounded-xl text-slate-300 hover:text-cyan-200 transition"
+            className="py-1 px-1 bg-[#0d111a] border border-[#21262d] hover:border-[#388bfd] text-[#c9d1d9] hover:text-[#f0f6fc] transition"
           >
             -15% Spd
           </button>
           <button
             onClick={handleReverseVelocity}
-            className="py-1 px-1.5 bg-slate-900 border border-slate-800 hover:border-purple-500 rounded-xl text-slate-300 hover:text-purple-200 transition flex items-center justify-center gap-0.5"
+            className="py-1 px-1 bg-[#0d111a] border border-[#21262d] hover:border-[#388bfd] text-[#c9d1d9] hover:text-[#f0f6fc] transition flex items-center justify-center gap-0.5"
           >
-            <RotateCw size={10} /> 180°
+            <RotateCw size={9} /> 180°
           </button>
         </div>
 
-        <button
-          onClick={handleCircularize}
-          className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 text-cyan-200 font-medium flex items-center justify-center gap-1.5 transition active:scale-98"
-        >
-          <Gauge size={13} className="text-cyan-400" />
-          <span>Circularize Orbit</span>
-        </button>
+        {primaryAttractor && (
+          <button
+            onClick={handleCircularize}
+            className="w-full py-1.5 px-2 bg-[#161b22] border border-[#30363d] hover:border-[#388bfd] text-[#58a6ff] hover:text-[#f0f6fc] flex items-center justify-center gap-1.5 transition text-[11px]"
+          >
+            <Gauge size={12} className="text-[#388bfd]" />
+            <span>Circularize Orbit vs {primaryAttractor.name}</span>
+          </button>
+        )}
       </div>
 
-      {/* Anchor & Delete Actions */}
-      <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+      {/* State Actions: Anchor & Delete */}
+      <div className="pt-2 border-t border-[#1b2230] flex items-center justify-between text-[11px]">
         <button
           onClick={() => onUpdateBody({ ...body, isFixed: !body.isFixed, velocity: { x: 0, y: 0, z: 0 } })}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition ${
+          className={`flex items-center gap-1 px-2.5 py-1 border transition ${
             body.isFixed
-              ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-              : 'border-slate-800 text-slate-400 hover:bg-slate-800'
+              ? 'bg-[#1f2937] border-[#d29922] text-[#d29922]'
+              : 'border-[#21262d] text-[#8b949e] hover:bg-[#161b22] hover:text-[#f0f6fc]'
           }`}
         >
-          {body.isFixed ? <Lock size={12} /> : <Unlock size={12} />}
-          <span>{body.isFixed ? 'Anchored' : 'Dynamic'}</span>
+          {body.isFixed ? <Lock size={11} /> : <Unlock size={11} />}
+          <span>{body.isFixed ? 'ANCHORED' : 'DYNAMIC'}</span>
         </button>
 
         <button
           onClick={() => onDeleteBody(body.id)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-800/50 hover:bg-rose-900/80 text-rose-300 transition"
+          className="flex items-center gap-1 px-2.5 py-1 bg-[#211215] border border-[#672027] hover:bg-[#381a1f] text-[#f85149] transition"
         >
-          <Trash2 size={12} />
-          <span>Delete Body</span>
+          <Trash2 size={11} />
+          <span>DELETE</span>
         </button>
       </div>
     </aside>
   );
 };
-

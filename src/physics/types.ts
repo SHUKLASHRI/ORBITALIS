@@ -18,6 +18,7 @@ export interface CelestialBody {
   color: string;          // Hex or CSS color
   trail: Vector3D[];      // Historical 3D orbital trajectory
   isFixed?: boolean;      // Stationary anchor
+  textureUrl?: string;    // Direct web CDN URL for photorealistic planet maps
   rings?: {
     innerRadius: number;
     outerRadius: number;
@@ -27,6 +28,7 @@ export interface CelestialBody {
 
 export type IntegratorType = 'verlet' | 'euler' | 'rk4';
 export type CollisionModel = 'merge' | 'bounce' | 'none';
+export type AppMode = 'explorer' | 'laboratory' | 'research';
 
 export interface SimulationConfig {
   G: number;                      // Gravitational constant (default: 4*pi^2)
@@ -43,6 +45,7 @@ export interface SimulationConfig {
   showGrid: boolean;
   showBarycenter: boolean;
   showLabels: boolean;
+  useRealisticTextures: boolean;  // Toggle photorealistic CDN texture maps vs PBR shaded colors
   renderQuality: 'performance' | 'balanced' | 'high';
 }
 
@@ -72,8 +75,8 @@ export interface PresetSystem {
   id: string;
   name: string;
   description: string;
+  objective?: string;
   camera: { x: number; y: number; z: number; targetX?: number; targetY?: number; targetZ?: number };
   config: Partial<SimulationConfig>;
   bodies: CelestialBody[];
 }
-

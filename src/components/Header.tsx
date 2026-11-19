@@ -1,15 +1,17 @@
 import React from 'react';
-import type { SimulationConfig, IntegratorType } from '../physics/types';
+import type { SimulationConfig, IntegratorType, AppMode } from '../physics/types';
 import {
   Play,
   Pause,
-  SkipForward,
   RotateCcw,
-  Sparkles,
+  SkipForward,
   Compass,
   Layers,
   Crosshair,
-  Activity,
+  Image,
+  Sliders,
+  FlaskConical,
+  Eye,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -20,6 +22,9 @@ interface HeaderProps {
   simulationTimeYears: number;
   fps: number;
   presetName: string;
+  appMode: AppMode;
+  onSetAppMode: (mode: AppMode) => void;
+  bodyCount: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,148 +35,186 @@ export const Header: React.FC<HeaderProps> = ({
   simulationTimeYears,
   fps,
   presetName,
+  appMode,
+  onSetAppMode,
+  bodyCount,
 }) => {
   const days = Math.round(simulationTimeYears * 365.25);
-  const years = simulationTimeYears.toFixed(2);
+  const years = simulationTimeYears.toFixed(3);
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 h-14 bg-slate-950/85 backdrop-blur-md border-b border-cyan-500/30 px-4 flex items-center justify-between shadow-2xl shadow-cyan-950/50">
-      {/* Brand & Identity */}
+    <header className="absolute top-0 left-0 right-0 z-40 h-11 bg-[#090d16] border-b border-[#1b2230] px-3 flex items-center justify-between text-xs select-none">
+      {/* Left: Brand Identity & Telemetry Status */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40">
-          <Sparkles size={16} className="text-cyan-400 animate-pulse" />
-          <span className="font-extrabold tracking-widest text-sm text-cyan-200">ORBITALIS</span>
+        <div className="flex items-center gap-2 pr-3 border-r border-[#1b2230]">
+          <span className="font-mono font-bold tracking-widest text-[#f0f6fc] text-xs">ORBITALIS</span>
+          <span className="px-1.5 py-0.2 bg-[#161b22] text-[#388bfd] border border-[#30363d] rounded-none font-mono text-[9px] uppercase tracking-wider">
+            v1.0-NEC
+          </span>
         </div>
-        <div className="hidden lg:block">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block leading-tight">
-            N-Body Gravitational Dynamics Simulator
-          </span>
-          <span className="text-[9px] text-cyan-400 font-mono">
-            {presetName} · 3D OBSERVATORY
-          </span>
+
+        {/* Telemetry Status Line */}
+        <div className="hidden lg:flex items-center gap-3 font-mono text-[11px] text-[#8b949e]">
+          <div>
+            STATUS: <span className="text-[#3fb950] font-bold">NOMINAL</span>
+          </div>
+          <div>
+            EXPERIMENT: <span className="text-[#f0f6fc]">{presetName}</span>
+          </div>
+          <div>
+            BODIES: <span className="text-[#58a6ff]">{bodyCount}</span>
+          </div>
+          <div>
+            T: <span className="text-[#f0f6fc]">{years} yr</span> <span className="text-[#484f58]">({days} d)</span>
+          </div>
         </div>
       </div>
 
-      {/* Middle: Simulation Clock & Integrator Selector */}
-      <div className="flex items-center gap-3">
-        {/* Elapsed Time Readout */}
-        <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1 font-mono text-xs">
-          <span className="text-slate-400 text-[10px] uppercase">Time:</span>
-          <span className="font-bold text-cyan-300">{years} yr</span>
-          <span className="text-slate-500 text-[10px]">({days} d)</span>
-        </div>
+      {/* Center: Mode Switcher Tabs */}
+      <div className="flex items-center bg-[#0d1117] border border-[#21262d] rounded-none p-0.5 text-[11px]">
+        {[
+          { id: 'explorer', label: '01. Explorer', icon: Eye },
+          { id: 'laboratory', label: '02. Laboratory', icon: Sliders },
+          { id: 'research', label: '03. Research', icon: FlaskConical },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = appMode === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onSetAppMode(tab.id as AppMode)}
+              className={`px-3 py-1 flex items-center gap-1.5 font-mono text-[11px] transition rounded-none ${
+                isActive
+                  ? 'bg-[#1f2937] text-[#f0f6fc] font-bold border border-[#388bfd]'
+                  : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22]'
+              }`}
+            >
+              <Icon size={11} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Playback Controls */}
-        <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-xl p-1">
+      {/* Right: Engine Playback Controls & Settings */}
+      <div className="flex items-center gap-2">
+        {/* Play/Pause/Step Buttons */}
+        <div className="flex items-center bg-[#0d1117] border border-[#21262d] rounded-none">
           <button
             onClick={() => onUpdateConfig({ isPaused: !config.isPaused })}
-            className={`p-1.5 rounded-lg transition ${
+            className={`px-2.5 py-1 text-[11px] font-mono flex items-center gap-1 transition ${
               config.isPaused
-                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
-                : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400'
+                ? 'bg-[#d29922] text-[#0d1117] font-bold'
+                : 'bg-[#238636] text-[#ffffff] font-bold'
             }`}
-            title={config.isPaused ? 'Resume (Space)' : 'Pause (Space)'}
+            title={config.isPaused ? 'Resume Simulation (Space)' : 'Pause Simulation (Space)'}
           >
-            {config.isPaused ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
+            {config.isPaused ? <Play size={11} fill="currentColor" /> : <Pause size={11} fill="currentColor" />}
+            <span>{config.isPaused ? 'RESUME' : 'PAUSE'}</span>
           </button>
 
           <button
             onClick={onStepFrame}
             disabled={!config.isPaused}
-            className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 rounded-lg transition"
-            title="Step 1 Frame"
+            className="p-1.5 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22] disabled:opacity-30 border-l border-[#21262d] transition"
+            title="Step 1 Numerical Frame"
           >
-            <SkipForward size={14} />
+            <SkipForward size={12} />
           </button>
 
           <button
             onClick={onReset}
-            className="p-1.5 text-slate-400 hover:text-cyan-300 rounded-lg transition"
-            title="Reset Simulation"
+            className="p-1.5 text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#161b22] border-l border-[#21262d] transition"
+            title="Reset Experiment"
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={12} />
           </button>
         </div>
 
-        {/* Time Multiplier Warp Slider */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 rounded-xl px-2.5 py-1">
-          <span className="text-[10px] uppercase font-semibold text-slate-400">Speed:</span>
-          <span className="font-mono text-xs text-cyan-300 w-11 text-right">
+        {/* Speed Slider */}
+        <div className="hidden sm:flex items-center gap-1.5 bg-[#0d1117] border border-[#21262d] px-2 py-0.5 font-mono text-[10px]">
+          <span className="text-[#8b949e]">SPEED:</span>
+          <span className="text-[#58a6ff] font-bold w-9 text-right">
             {config.timeMultiplier.toFixed(1)}x
           </span>
           <input
             type="range"
             min="0.1"
-            max="5.0"
+            max="4.0"
             step="0.1"
             value={config.timeMultiplier}
             onChange={(e) => onUpdateConfig({ timeMultiplier: parseFloat(e.target.value) })}
-            className="w-16 accent-cyan-400 h-1 bg-slate-800 rounded cursor-pointer"
+            className="w-14 accent-[#388bfd] h-1 bg-[#21262d] rounded-none cursor-pointer"
           />
         </div>
 
-        {/* Integrator Selector */}
-        <div className="hidden md:flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-xl p-1 text-[11px]">
-          {(['verlet', 'rk4', 'euler'] as IntegratorType[]).map((alg) => (
-            <button
-              key={alg}
-              onClick={() => onUpdateConfig({ integrator: alg })}
-              className={`px-2 py-0.5 rounded-lg font-mono capitalize transition ${
-                config.integrator === alg
-                  ? 'bg-purple-600 text-white font-bold shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              {alg}
-            </button>
-          ))}
+        {/* Integrator Indicator/Selector */}
+        <select
+          value={config.integrator}
+          onChange={(e) => onUpdateConfig({ integrator: e.target.value as IntegratorType })}
+          className="bg-[#0d1117] border border-[#21262d] text-[#c9d1d9] font-mono text-[10px] px-2 py-1 rounded-none focus:outline-none cursor-pointer"
+        >
+          <option value="verlet">Velocity Verlet (Symplectic)</option>
+          <option value="rk4">Runge-Kutta 4 (RK4)</option>
+          <option value="euler">Euler (Comparison)</option>
+        </select>
+
+        {/* Viewport Layers Toggle Buttons */}
+        <div className="flex items-center gap-0.5 bg-[#0d1117] border border-[#21262d] p-0.5">
+          <button
+            onClick={() => onUpdateConfig({ showGrid: !config.showGrid })}
+            className={`p-1 border transition ${
+              config.showGrid
+                ? 'bg-[#1f2937] text-[#58a6ff] border-[#388bfd]'
+                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+            }`}
+            title="Ecliptic Reference Grid"
+          >
+            <Compass size={13} />
+          </button>
+
+          <button
+            onClick={() => onUpdateConfig({ showTrails: !config.showTrails })}
+            className={`p-1 border transition ${
+              config.showTrails
+                ? 'bg-[#1f2937] text-[#58a6ff] border-[#388bfd]'
+                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+            }`}
+            title="Orbital Trajectory Trails"
+          >
+            <Layers size={13} />
+          </button>
+
+          <button
+            onClick={() => onUpdateConfig({ showBarycenter: !config.showBarycenter })}
+            className={`p-1 border transition ${
+              config.showBarycenter
+                ? 'bg-[#1f2937] text-[#d29922] border-[#d29922]'
+                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+            }`}
+            title="System Center of Mass (Barycentre)"
+          >
+            <Crosshair size={13} />
+          </button>
+
+          <button
+            onClick={() => onUpdateConfig({ useRealisticTextures: !config.useRealisticTextures })}
+            className={`p-1 border transition ${
+              config.useRealisticTextures
+                ? 'bg-[#1f2937] text-[#3fb950] border-[#238636]'
+                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+            }`}
+            title="Photorealistic Web CDN Textures"
+          >
+            <Image size={13} />
+          </button>
         </div>
-      </div>
 
-      {/* Right: Telemetry pill & Overlays */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
-          <Activity size={12} className="text-emerald-400" />
-          <span className="text-emerald-300 font-bold">{fps} FPS</span>
+        {/* FPS badge */}
+        <div className="px-2 py-0.5 bg-[#0d1117] border border-[#21262d] text-[10px] font-mono text-[#3fb950]">
+          {fps} FPS
         </div>
-
-        <button
-          onClick={() => onUpdateConfig({ showGrid: !config.showGrid })}
-          className={`p-2 rounded-xl border transition ${
-            config.showGrid
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-              : 'border-slate-800 text-slate-400 hover:bg-slate-800'
-          }`}
-          title="Toggle Ecliptic Grid"
-        >
-          <Compass size={15} />
-        </button>
-
-        <button
-          onClick={() => onUpdateConfig({ showTrails: !config.showTrails })}
-          className={`p-2 rounded-xl border transition ${
-            config.showTrails
-              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-              : 'border-slate-800 text-slate-400 hover:bg-slate-800'
-          }`}
-          title="Toggle Orbital Trails"
-        >
-          <Layers size={15} />
-        </button>
-
-        <button
-          onClick={() => onUpdateConfig({ showBarycenter: !config.showBarycenter })}
-          className={`p-2 rounded-xl border transition ${
-            config.showBarycenter
-              ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-              : 'border-slate-800 text-slate-400 hover:bg-slate-800'
-          }`}
-          title="Toggle System Barycenter Marker"
-        >
-          <Crosshair size={15} />
-        </button>
       </div>
     </header>
   );
 };
-

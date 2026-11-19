@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { CelestialBody, SimulationConfig, PresetSystem } from './physics/types';
+import type { CelestialBody, SimulationConfig, PresetSystem, AppMode } from './physics/types';
 import { G_ASTRONOMICAL, DEFAULT_SOFTENING } from './physics/constants';
 import { PhysicsEngine } from './physics/PhysicsEngine';
+import { ChaosExperiment, type ChaosDivergencePoint } from './physics/chaos';
 import { PRESET_SOLAR_SYSTEM } from './presets';
 import { ThreeViewport } from './rendering/ThreeViewport';
 import { Header } from './components/Header';
@@ -11,6 +12,9 @@ import { Dashboard } from './components/Dashboard';
 
 export function App() {
   const initialPreset = PRESET_SOLAR_SYSTEM;
+
+  // Interaction Mode (01. Explorer, 02. Laboratory, 03. Research)
+  const [appMode, setAppMode] = useState<AppMode>('laboratory');
 
   // Simulation Configuration
   const [config, setConfig] = useState<SimulationConfig>({
@@ -29,16 +33,23 @@ export function App() {
     showBarycenter: false,
     showLabels: true,
     renderQuality: 'balanced',
+    useRealisticTextures: true,
   });
 
   const [currentPreset, setCurrentPreset] = useState<PresetSystem>(initialPreset);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const [focusedBodyId, setFocusedBodyId] = useState<string | null>(null);
   const [fps, setFps] = useState<number>(60);
+  const [chaosHistory, setChaosHistory] = useState<ChaosDivergencePoint[]>([]);
 
   // Initialize standalone Physics Engine
   const physicsEngineRef = useRef<PhysicsEngine>(
     new PhysicsEngine(initialPreset.bodies, config)
+  );
+
+  // Initialize Chaos Experiment tracker for deterministic chaos research
+  const chaosRef = useRef<ChaosExperiment>(
+    new ChaosExperiment(initialPreset.bodies)
   );
 
   // Reactive state for UI rendering
@@ -63,6 +74,9 @@ export function App() {
     setCurrentPreset(preset);
     physicsEngineRef.current.setBodies(preset.bodies);
     physicsEngineRef.current.resetTime();
+    chaosRef.current.reset(preset.bodies);
+    setChaosHistory([]);
+
     if (preset.config) {
       physicsEngineRef.current.setConfig(preset.config);
       setConfig((prev) => ({ ...prev, ...preset.config }));
@@ -77,6 +91,8 @@ export function App() {
   const handleReset = useCallback(() => {
     physicsEngineRef.current.setBodies(currentPreset.bodies);
     physicsEngineRef.current.resetTime();
+    chaosRef.current.reset(currentPreset.bodies);
+    setChaosHistory([]);
     setBodies(physicsEngineRef.current.getBodies());
     setMeasurements(physicsEngineRef.current.getMeasurements());
     setSelectedBodyId(null);
@@ -112,6 +128,7 @@ export function App() {
     let animId: number;
     let lastTime = performance.now();
     let uiThrottleTimer = performance.now();
+    let chaosThrottleTimer = performance.now();
 
     const loop = (time: number) => {
       animId = requestAnimationFrame(loop);
@@ -121,6 +138,21 @@ export function App() {
 
       // Advance physics simulation
       const currentBodies = physicsEngineRef.current.step(deltaSeconds);
+
+      // Track Lyapunov chaos divergence if running a chaos experiment or in research mode
+      if (!config.isPaused && (currentPreset.id === 'chaos-experiment' || appMode === 'research')) {
+        if (time - chaosThrottleTimer >= 50) {
+          const pt = chaosRef.current.step(
+            config,
+            deltaSeconds * config.timeMultiplier,
+            physicsEngineRef.current.getTimeYears()
+          );
+          if (pt) {
+            setChaosHistory([...chaosRef.current.getHistory()]);
+          }
+          chaosThrottleTimer = time;
+        }
+      }
 
       // Throttle React UI updates to ~30 FPS to avoid unnecessary DOM re-renders while keeping 3D 60 FPS
       if (time - uiThrottleTimer >= 33) {
@@ -132,7 +164,7 @@ export function App() {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, []);
+  }, [config, currentPreset.id, appMode]);
 
   // Export JSON configuration (OR-21)
   const handleExportJSON = () => {
@@ -208,7 +240,7 @@ export function App() {
   const selectedBody = bodies.find((b) => b.id === selectedBodyId) || null;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 select-none">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#06080d] text-[#c9d1d9] select-none font-mono">
       {/* Top Header */}
       <Header
         config={config}
@@ -218,10 +250,13 @@ export function App() {
         simulationTimeYears={physicsEngineRef.current.getTimeYears()}
         fps={fps}
         presetName={currentPreset.name}
+        appMode={appMode}
+        onSetAppMode={setAppMode}
+        bodyCount={bodies.length}
       />
 
       {/* Main 3D Simulation Viewport */}
-      <main className="absolute inset-0 pt-14 pb-10">
+      <main className="absolute inset-0 pt-11 pb-8">
         <ThreeViewport
           bodies={bodies}
           config={config}
@@ -233,37 +268,43 @@ export function App() {
         />
       </main>
 
-      {/* Left Sidebar (Presets, Hierarchy, Add, JSON/CSV) */}
-      <Sidebar
-        currentPresetId={currentPreset.id}
-        onSelectPreset={handleSelectPreset}
-        bodies={bodies}
-        selectedBodyId={selectedBodyId}
-        onSelectBody={setSelectedBodyId}
-        onAddBody={handleAddBody}
-        onDeleteBody={handleDeleteBody}
-        onExportJSON={handleExportJSON}
-        onImportJSON={handleImportJSON}
-        onExportCSV={handleExportCSV}
-      />
+      {/* Left Sidebar (Only visible in Laboratory & Research modes or toggled) */}
+      {appMode !== 'explorer' && (
+        <Sidebar
+          currentPresetId={currentPreset.id}
+          onSelectPreset={handleSelectPreset}
+          bodies={bodies}
+          selectedBodyId={selectedBodyId}
+          onSelectBody={setSelectedBodyId}
+          onAddBody={handleAddBody}
+          onDeleteBody={handleDeleteBody}
+          onExportJSON={handleExportJSON}
+          onImportJSON={handleImportJSON}
+          onExportCSV={handleExportCSV}
+        />
+      )}
 
-      {/* Right Inspector (Physical Properties, Orbit Circularizer, Coordinates) */}
-      <Inspector
-        body={selectedBody}
-        allBodies={bodies}
-        G={config.G}
-        onUpdateBody={handleUpdateBody}
-        onDeleteBody={handleDeleteBody}
-        onClose={() => setSelectedBodyId(null)}
-        isFocused={focusedBodyId === selectedBodyId}
-        onToggleFocus={(id) => setFocusedBodyId(focusedBodyId === id ? null : id)}
-      />
+      {/* Right Inspector (Active when body selected or in Laboratory/Research modes) */}
+      {selectedBody && (
+        <Inspector
+          body={selectedBody}
+          allBodies={bodies}
+          G={config.G}
+          onUpdateBody={handleUpdateBody}
+          onDeleteBody={handleDeleteBody}
+          onClose={() => setSelectedBodyId(null)}
+          isFocused={focusedBodyId === selectedBodyId}
+          onToggleFocus={(id) => setFocusedBodyId(focusedBodyId === id ? null : id)}
+        />
+      )}
 
-      {/* Bottom Scientific Panel (Energy & Momentum Telemetry & Graphs) */}
+      {/* Bottom Scientific Panel (Always available, expanded in Laboratory & Research) */}
       <Dashboard
         measurements={measurements}
         config={config}
         fps={fps}
+        appMode={appMode}
+        chaosHistory={chaosHistory}
       />
     </div>
   );
