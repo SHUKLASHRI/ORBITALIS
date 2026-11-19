@@ -33,7 +33,7 @@
 
 ```bash
 # Navigate to project directory
-cd C:\Users\sagar\.gemini\antigravity\scratch\ORBITALIS
+cd C:
 
 # Install dependencies
 npm install
