@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { ScientificMeasurements, SimulationConfig, AppMode } from '../physics/types';
 import type { ChaosDivergencePoint } from '../physics/chaos';
 import {
+  formatDynamicEnergy,
+  formatDynamicMomentum,
+  formatDynamicDistance,
+  formatAxisLabel,
+} from '../physics/units';
+import {
   Activity,
   LineChart,
   ShieldCheck,
@@ -30,7 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const energyCanvasRef = useRef<HTMLCanvasElement>(null);
   const chaosCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Render Energy History Multi-Series Chart
+  // Render Energy History Multi-Series Chart (Pure Black & White with Off-white Lines & Zero 'e')
   useEffect(() => {
     if (activeTab !== 'energy-chart') return;
     const canvas = energyCanvasRef.current;
@@ -44,9 +50,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const history = measurements.history;
     if (history.length < 2) {
-      ctx.fillStyle = '#8b949e';
-      ctx.font = '10px monospace';
-      ctx.fillText('COLLECTING CONSERVATION TELEMETRY...', 20, height / 2);
+      ctx.fillStyle = '#a1a1aa';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillText('COLLECTING CONSERVATION TELEMETRY...', 24, height / 2);
       return;
     }
 
@@ -63,8 +69,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
 
     const range = Math.max(1e-6, maxVal - minVal);
-    const padX = 36;
-    const padY = 16;
+    const padX = 48;
+    const padY = 18;
 
     const getY = (val: number) => {
       const norm = (val - minVal) / range;
@@ -75,10 +81,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return padX + (idx / (history.length - 1)) * (width - padX * 2);
     };
 
-    // Technical Grid
-    ctx.strokeStyle = '#1b2230';
+    // Off-white Grid
+    ctx.strokeStyle = '#262626';
     ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
+    ctx.setLineDash([3, 4]);
 
     for (let i = 1; i <= 3; i++) {
       const y = padY + (i / 4) * (height - padY * 2);
@@ -90,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ctx.setLineDash([]);
 
     // Axes
-    ctx.strokeStyle = '#30363d';
+    ctx.strokeStyle = '#404040';
     ctx.beginPath();
     ctx.moveTo(padX, padY);
     ctx.lineTo(padX, height - padY);
@@ -110,21 +116,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
       ctx.stroke();
     };
 
-    // Kinetic (Blue)
-    drawLine('#388bfd', 'kinetic', 1.5);
-    // Potential (Red)
-    drawLine('#f85149', 'potential', 1.5);
-    // Total (Green - Hamiltonian)
-    drawLine('#3fb950', 'total', 2.0);
+    // Kinetic (Emerald Green)
+    drawLine('#22c55e', 'kinetic', 1.5);
+    // Potential (Crimson)
+    drawLine('#ef4444', 'potential', 1.5);
+    // Total (Pure White - Conserved Hamiltonian)
+    drawLine('#ffffff', 'total', 2.0);
 
-    // Coordinate text labels
-    ctx.fillStyle = '#8b949e';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${maxVal.toExponential(2)}`, 2, padY + 8);
-    ctx.fillText(`${minVal.toExponential(2)}`, 2, height - padY);
+    // Coordinate text labels (Zero 'e')
+    ctx.fillStyle = '#a1a1aa';
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillText(formatAxisLabel(maxVal), 4, padY + 8);
+    ctx.fillText(formatAxisLabel(minVal), 4, height - padY);
   }, [measurements.history, activeTab]);
 
-  // Render Chaos Lyapunov Divergence Chart
+  // Render Chaos Lyapunov Divergence Chart (Zero 'e')
   useEffect(() => {
     if (activeTab !== 'chaos') return;
     const canvas = chaosCanvasRef.current;
@@ -137,15 +143,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ctx.clearRect(0, 0, width, height);
 
     if (chaosHistory.length < 2) {
-      ctx.fillStyle = '#8b949e';
-      ctx.font = '10px monospace';
-      ctx.fillText('RUNNING TWIN PERTURBATION (10⁻⁶)... WAITING FOR STEPS', 20, height / 2);
+      ctx.fillStyle = '#a1a1aa';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillText('RUNNING TWIN PERTURBATION... WAITING FOR SIMULATION STEPS', 24, height / 2);
       return;
     }
 
-    const padX = 40;
-    const padY = 16;
-    // log divergence scale from -6 (initial) to 1 (macro-divergence 10 AU)
+    const padX = 52;
+    const padY = 18;
     const minLog = -6;
     const maxLog = 1;
     const range = maxLog - minLog;
@@ -160,26 +165,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return padX + (idx / (chaosHistory.length - 1)) * (width - padX * 2);
     };
 
-    // Grid
-    ctx.strokeStyle = '#1b2230';
+    // Off-white Grid
+    ctx.strokeStyle = '#262626';
     ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
-    for (let log = -5; log <= 0; log++) {
+    ctx.setLineDash([3, 4]);
+
+    const logLabels: Record<number, string> = {
+      [-6]: '150 km',
+      [-4]: '15,000 km',
+      [-2]: '1.5M km',
+      [0]: '1.0 AU',
+    };
+
+    for (let log = -6; log <= 0; log += 2) {
       const y = getY(log);
       ctx.beginPath();
       ctx.moveTo(padX, y);
       ctx.lineTo(width - padX, y);
       ctx.stroke();
 
-      ctx.fillStyle = '#484f58';
-      ctx.font = '8px monospace';
-      ctx.fillText(`10^${log}`, 6, y + 3);
+      ctx.fillStyle = '#71717a';
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText(logLabels[log] || '', 4, y + 4);
     }
     ctx.setLineDash([]);
 
-    // Plot Lyapunov divergence curve (Orange)
+    // Plot Lyapunov divergence curve (Bright Gold)
     ctx.beginPath();
-    ctx.strokeStyle = '#d29922';
+    ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 2;
     for (let i = 0; i < chaosHistory.length; i++) {
       const x = getX(i);
@@ -190,9 +203,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ctx.stroke();
 
     const latest = chaosHistory[chaosHistory.length - 1];
-    ctx.fillStyle = '#e3b341';
-    ctx.font = '9px monospace';
-    ctx.fillText(`Δr: ${latest.divergenceAU.toExponential(3)} AU`, width - 150, padY + 12);
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillText(`Δr: ${formatDynamicDistance(latest.divergenceAU)}`, width - 170, padY + 14);
   }, [chaosHistory, activeTab]);
 
   const n = measurements.bodyCount;
@@ -201,39 +214,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ? (2 * measurements.kineticEnergy) / Math.abs(measurements.potentialEnergy)
     : 0;
 
+  const kEnergy = formatDynamicEnergy(measurements.kineticEnergy);
+  const uEnergy = formatDynamicEnergy(measurements.potentialEnergy);
+  const hEnergy = formatDynamicEnergy(measurements.totalEnergy);
+
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center">
+    <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center font-sans">
       <div
-        className={`pointer-events-auto bg-[#090d16] border-t border-[#1b2230] transition-all duration-200 w-full max-w-5xl overflow-hidden select-none font-mono ${
-          isExpanded ? 'h-48' : 'h-8'
+        className={`pointer-events-auto bg-black border-t border-neutral-800 transition-all duration-200 w-full max-w-5xl overflow-hidden select-none shadow-2xl ${
+          isExpanded ? 'h-52' : 'h-10'
         }`}
       >
         {/* Instrument Control Ribbon */}
-        <div className="h-8 px-3 bg-[#0d111a] border-b border-[#1b2230] flex items-center justify-between text-xs">
-          <div className="flex items-center gap-3">
-            <span className="font-bold uppercase tracking-wider text-[#f0f6fc] flex items-center gap-1.5 text-[11px]">
-              <Activity size={13} className="text-[#388bfd]" /> SCIENTIFIC TELEMETRY
+        <div className="h-10 px-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-3.5">
+            <span className="font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Activity size={14} className="text-white" /> SCIENTIFIC TELEMETRY
             </span>
 
             {/* Symplectic Energy Drift Indicator */}
             <span
-              className={`px-1.5 py-0.2 border text-[10px] ${
+              className={`px-2 py-0.5 border text-xs font-mono font-semibold ${
                 Math.abs(measurements.energyDriftPercent) < 0.1
-                  ? 'bg-[#122619] border-[#238636] text-[#3fb950]'
-                  : 'bg-[#2b1f13] border-[#9e6a03] text-[#d29922]'
+                  ? 'bg-emerald-950 border-emerald-600 text-emerald-300'
+                  : 'bg-amber-950 border-amber-600 text-amber-300'
               }`}
             >
               DRIFT: {measurements.energyDriftPercent >= 0 ? '+' : ''}
               {measurements.energyDriftPercent.toFixed(4)}%
             </span>
 
-            <span className="hidden md:inline text-[10px] text-[#8b949e]">
-              VIRIAL (2K/|U|): <span className="text-[#f0f6fc]">{virialRatio.toFixed(3)}</span> • PAIRS: <span className="text-[#58a6ff]">{pairwiseInteractions.toLocaleString()}</span> • <span className="text-[#3fb950]">{fps} FPS</span>
+            <span className="hidden md:inline text-xs text-neutral-400">
+              VIRIAL (2K/|U|): <span className="text-white font-semibold">{virialRatio.toFixed(3)}</span> • PAIRS:{' '}
+              <span className="text-white font-semibold">{pairwiseInteractions.toLocaleString()}</span> •{' '}
+              <span className="text-emerald-400 font-semibold">{fps} FPS</span>
             </span>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-0.5 text-[11px]">
+          <div className="flex items-center gap-1 text-xs">
             {[
               { id: 'overview', label: 'HAMILTONIAN', icon: Activity },
               { id: 'energy-chart', label: 'ENERGY PLOT', icon: LineChart },
@@ -250,13 +269,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     setActiveTab(tab.id as typeof activeTab);
                     setIsExpanded(true);
                   }}
-                  className={`px-2.5 py-1 flex items-center gap-1 border-t-2 transition ${
+                  className={`px-3 py-1.5 flex items-center gap-1.5 border-t-2 transition font-medium ${
                     isActive && isExpanded
-                      ? 'bg-[#161b22] text-[#58a6ff] border-[#388bfd] font-bold'
-                      : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc] hover:bg-[#161b22]'
+                      ? 'bg-neutral-900 text-white border-white font-bold'
+                      : 'text-neutral-400 border-transparent hover:text-white hover:bg-neutral-900/50'
                   }`}
                 >
-                  <Icon size={11} />
+                  <Icon size={12} />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -264,127 +283,137 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-[#8b949e] hover:text-[#f0f6fc] p-1 hover:bg-[#161b22] ml-2 border border-[#21262d] transition"
-              title={isExpanded ? 'Collapse Scientific HUD' : 'Expand Scientific HUD'}
+              className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 ml-2 border border-neutral-700 transition"
+              title={isExpanded ? 'Collapse Panel' : 'Expand Panel'}
             >
-              {isExpanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
             </button>
           </div>
         </div>
 
         {/* Tab Panel Body */}
         {isExpanded && (
-          <div className="h-[calc(100%-32px)] p-2.5 text-xs overflow-y-auto">
-            {/* 1. OVERVIEW: HAMILTONIAN DYNAMICS */}
+          <div className="h-[calc(100%-40px)] p-3 text-xs overflow-y-auto">
+            {/* 1. OVERVIEW: HAMILTONIAN DYNAMICS (Zero 'e' Notation) */}
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-4 gap-2 text-center">
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block">Kinetic Energy (K = ½Σmv²)</span>
-                  <div className="text-xs font-bold text-[#58a6ff] mt-0.5">
-                    {measurements.kineticEnergy.toExponential(4)}
+              <div className="grid grid-cols-4 gap-2.5 text-center">
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block font-medium">Kinetic Energy (K = ½Σmv²)</span>
+                  <div className="text-sm font-bold text-emerald-400 mt-1">
+                    {kEnergy.value}
                   </div>
-                  <span className="text-[9px] text-[#484f58]">M☉·AU²/yr²</span>
+                  <span className="text-xs text-neutral-400 block">{kEnergy.unit}</span>
+                  <span className="text-xs text-neutral-500 font-mono mt-0.5 block">{kEnergy.joulesLabel}</span>
                 </div>
 
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block">Potential Energy (U = -GΣm₁m₂/r)</span>
-                  <div className="text-xs font-bold text-[#f85149] mt-0.5">
-                    {measurements.potentialEnergy.toExponential(4)}
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block font-medium">Potential Energy (U = -GΣm₁m₂/r)</span>
+                  <div className="text-sm font-bold text-rose-400 mt-1">
+                    {uEnergy.value}
                   </div>
-                  <span className="text-[9px] text-[#484f58]">M☉·AU²/yr²</span>
+                  <span className="text-xs text-neutral-400 block">{uEnergy.unit}</span>
+                  <span className="text-xs text-neutral-500 font-mono mt-0.5 block">{uEnergy.joulesLabel}</span>
                 </div>
 
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block">Total Hamiltonian (H = K + U)</span>
-                  <div className="text-xs font-bold text-[#3fb950] mt-0.5">
-                    {measurements.totalEnergy.toExponential(4)}
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block font-medium">Total Hamiltonian (H = K + U)</span>
+                  <div className="text-sm font-bold text-white mt-1">
+                    {hEnergy.value}
                   </div>
-                  <span className="text-[9px] text-[#484f58]">Conserved Invariant</span>
+                  <span className="text-xs text-neutral-400 block">{hEnergy.unit}</span>
+                  <span className="text-xs text-emerald-400 font-mono mt-0.5 block">Conserved Invariant</span>
                 </div>
 
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block">Angular Momentum (|L| = |Σr×p|)</span>
-                  <div className="text-xs font-bold text-[#d29922] mt-0.5">
-                    {measurements.totalAngularMomentum.toExponential(4)}
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block font-medium">Angular Momentum (|L| = |Σr×p|)</span>
+                  <div className="text-sm font-bold text-amber-400 mt-1">
+                    {formatDynamicMomentum(measurements.totalAngularMomentum, true)}
                   </div>
-                  <span className="text-[9px] text-[#484f58]">M☉·AU²/yr</span>
+                  <span className="text-xs text-neutral-400 block">Total System L</span>
+                  <span className="text-xs text-neutral-500 font-mono mt-0.5 block">Conserved Vector</span>
                 </div>
               </div>
             )}
 
             {/* 2. ENERGY CHART */}
             {activeTab === 'energy-chart' && (
-              <div className="h-full flex items-center gap-3">
+              <div className="h-full flex items-center gap-3.5">
                 <canvas
                   ref={energyCanvasRef}
                   width={680}
-                  height={115}
-                  className="bg-[#0d111a] border border-[#1b2230] h-full flex-1"
+                  height={125}
+                  className="bg-neutral-950 border border-neutral-800 h-full flex-1"
                 />
-                <div className="w-56 shrink-0 bg-[#0d111a] border border-[#1b2230] p-2 space-y-1 text-[10px]">
-                  <div className="text-[#8b949e] uppercase font-bold border-b border-[#1b2230] pb-1 mb-1">
-                    TIME-SERIES CHANNELS
+                <div className="w-60 shrink-0 bg-neutral-950 border border-neutral-800 p-2.5 space-y-1.5 text-xs">
+                  <div className="text-neutral-300 uppercase font-bold border-b border-neutral-800 pb-1 mb-1">
+                    CHANNELS (ZERO DRIFT)
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-[#3fb950]">
-                      <span className="w-2.5 h-0.5 bg-[#3fb950]" /> H (Total)
+                    <span className="flex items-center gap-2 text-white font-medium">
+                      <span className="w-3 h-0.5 bg-white" /> H (Total Hamiltonian)
                     </span>
-                    <span className="text-[#c9d1d9]">{measurements.totalEnergy.toExponential(2)}</span>
+                    <span className="text-white font-mono">{hEnergy.value} {hEnergy.unit.split(' ')[0]}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-[#388bfd]">
-                      <span className="w-2.5 h-0.5 bg-[#388bfd]" /> K (Kinetic)
+                    <span className="flex items-center gap-2 text-emerald-400 font-medium">
+                      <span className="w-3 h-0.5 bg-emerald-400" /> K (Kinetic Energy)
                     </span>
-                    <span className="text-[#c9d1d9]">{measurements.kineticEnergy.toExponential(2)}</span>
+                    <span className="text-emerald-400 font-mono">{kEnergy.value}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-[#f85149]">
-                      <span className="w-2.5 h-0.5 bg-[#f85149]" /> U (Potential)
+                    <span className="flex items-center gap-2 text-rose-400 font-medium">
+                      <span className="w-3 h-0.5 bg-rose-400" /> U (Potential Energy)
                     </span>
-                    <span className="text-[#c9d1d9]">{measurements.potentialEnergy.toExponential(2)}</span>
+                    <span className="text-rose-400 font-mono">{uEnergy.value}</span>
                   </div>
-                  <p className="text-[8px] text-[#484f58] pt-1 border-t border-[#1b2230] leading-tight">
+                  <p className="text-xs text-neutral-400 pt-1.5 border-t border-neutral-800 leading-normal">
                     Symplectic Velocity Verlet preserves phase space volume without secular orbital decay.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* 3. MOMENTUM CONSERVATION */}
+            {/* 3. MOMENTUM CONSERVATION (Zero 'e' Notation) */}
             {activeTab === 'momentum' && (
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block mb-1">Linear Momentum (P = Σmv)</span>
-                  <div className="space-y-0.5 text-[10px] text-[#8b949e]">
-                    <div>Px: <span className="text-[#f0f6fc]">{measurements.linearMomentum.x.toExponential(3)}</span></div>
-                    <div>Py: <span className="text-[#f0f6fc]">{measurements.linearMomentum.y.toExponential(3)}</span></div>
-                    <div>Pz: <span className="text-[#f0f6fc]">{measurements.linearMomentum.z.toExponential(3)}</span></div>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block mb-1 font-medium">
+                    Linear Momentum (P = Σmv)
+                  </span>
+                  <div className="space-y-0.5 text-xs text-neutral-400 font-mono">
+                    <div>Px: <span className="text-white">{formatDynamicMomentum(measurements.linearMomentum.x)}</span></div>
+                    <div>Py: <span className="text-white">{formatDynamicMomentum(measurements.linearMomentum.y)}</span></div>
+                    <div>Pz: <span className="text-white">{formatDynamicMomentum(measurements.linearMomentum.z)}</span></div>
                   </div>
-                  <div className="text-[10px] text-[#58a6ff] font-bold mt-1 pt-1 border-t border-[#1b2230]">
-                    |P|: {measurements.totalLinearMomentum.toExponential(3)} M☉·AU/yr
-                  </div>
-                </div>
-
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block mb-1">Angular Momentum (L = Σr×p)</span>
-                  <div className="space-y-0.5 text-[10px] text-[#8b949e]">
-                    <div>Lx: <span className="text-[#f0f6fc]">{measurements.angularMomentum.x.toExponential(3)}</span></div>
-                    <div>Ly: <span className="text-[#f0f6fc]">{measurements.angularMomentum.y.toExponential(3)}</span></div>
-                    <div>Lz: <span className="text-[#f0f6fc]">{measurements.angularMomentum.z.toExponential(3)}</span></div>
-                  </div>
-                  <div className="text-[10px] text-[#d29922] font-bold mt-1 pt-1 border-t border-[#1b2230]">
-                    |L|: {measurements.totalAngularMomentum.toExponential(3)} M☉·AU²/yr
+                  <div className="text-xs text-white font-bold mt-1.5 pt-1.5 border-t border-neutral-800">
+                    |P|: {formatDynamicMomentum(measurements.totalLinearMomentum)}
                   </div>
                 </div>
 
-                <div className="bg-[#0d111a] border border-[#1b2230] p-2">
-                  <span className="text-[9px] uppercase text-[#8b949e] block mb-1">Barycenter (R_cm = Σmr/M)</span>
-                  <div className="space-y-0.5 text-[10px] text-[#8b949e]">
-                    <div>X_cm: <span className="text-[#f0f6fc]">{measurements.barycenter.x.toFixed(4)} AU</span></div>
-                    <div>Y_cm: <span className="text-[#f0f6fc]">{measurements.barycenter.y.toFixed(4)} AU</span></div>
-                    <div>Z_cm: <span className="text-[#f0f6fc]">{measurements.barycenter.z.toFixed(4)} AU</span></div>
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block mb-1 font-medium">
+                    Angular Momentum (L = Σr×p)
+                  </span>
+                  <div className="space-y-0.5 text-xs text-neutral-400 font-mono">
+                    <div>Lx: <span className="text-white">{formatDynamicMomentum(measurements.angularMomentum.x, true)}</span></div>
+                    <div>Ly: <span className="text-white">{formatDynamicMomentum(measurements.angularMomentum.y, true)}</span></div>
+                    <div>Lz: <span className="text-white">{formatDynamicMomentum(measurements.angularMomentum.z, true)}</span></div>
                   </div>
-                  <div className="text-[10px] text-[#3fb950] font-bold mt-1 pt-1 border-t border-[#1b2230]">
+                  <div className="text-xs text-amber-400 font-bold mt-1.5 pt-1.5 border-t border-neutral-800">
+                    |L|: {formatDynamicMomentum(measurements.totalAngularMomentum, true)}
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950 border border-neutral-800 p-2.5">
+                  <span className="text-xs uppercase text-neutral-400 block mb-1 font-medium">
+                    Barycenter (R_cm = Σmr/M)
+                  </span>
+                  <div className="space-y-0.5 text-xs text-neutral-400 font-mono">
+                    <div>X_cm: <span className="text-white">{measurements.barycenter.x.toFixed(4)} AU</span></div>
+                    <div>Y_cm: <span className="text-white">{measurements.barycenter.y.toFixed(4)} AU</span></div>
+                    <div>Z_cm: <span className="text-white">{measurements.barycenter.z.toFixed(4)} AU</span></div>
+                  </div>
+                  <div className="text-xs text-emerald-400 font-bold mt-1.5 pt-1.5 border-t border-neutral-800 font-sans">
                     System Center of Mass
                   </div>
                 </div>
@@ -393,37 +422,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             {/* 4. INTEGRATOR COMPARISON */}
             {activeTab === 'integrators' && (
-              <div className="grid grid-cols-3 gap-2">
-                <div className={`p-2 border ${config.integrator === 'verlet' ? 'bg-[#161b22] border-[#388bfd]' : 'bg-[#0d111a] border-[#1b2230]'}`}>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#f0f6fc]">
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className={`p-2.5 border ${config.integrator === 'verlet' ? 'bg-neutral-900 border-white' : 'bg-neutral-950 border-neutral-800'}`}>
+                  <div className="flex items-center justify-between text-xs font-bold text-white">
                     <span>Velocity Verlet</span>
-                    <span className="text-[9px] px-1 bg-[#1f2937] text-[#58a6ff]">RECOMMENDED</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-white text-black font-semibold">ACTIVE SYMPLECTIC</span>
                   </div>
-                  <div className="text-[9px] text-[#8b949e] mt-1 space-y-0.5">
+                  <div className="text-xs text-neutral-400 mt-1.5 space-y-1">
                     <div>• Order: 2nd Order Symplectic</div>
                     <div>• Evaluations: 1 force eval / step</div>
                     <div>• Energy: Exact phase-space conservation; no artificial secular orbital decay</div>
                   </div>
                 </div>
 
-                <div className={`p-2 border ${config.integrator === 'rk4' ? 'bg-[#161b22] border-[#388bfd]' : 'bg-[#0d111a] border-[#1b2230]'}`}>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#f0f6fc]">
+                <div className={`p-2.5 border ${config.integrator === 'rk4' ? 'bg-neutral-900 border-white' : 'bg-neutral-950 border-neutral-800'}`}>
+                  <div className="flex items-center justify-between text-xs font-bold text-white">
                     <span>Runge-Kutta 4 (RK4)</span>
-                    <span className="text-[9px] px-1 bg-[#1f2937] text-[#8b949e]">HIGH ORDER</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-neutral-800 text-neutral-300">HIGH ORDER</span>
                   </div>
-                  <div className="text-[9px] text-[#8b949e] mt-1 space-y-0.5">
+                  <div className="text-xs text-neutral-400 mt-1.5 space-y-1">
                     <div>• Order: 4th Order Classical</div>
                     <div>• Evaluations: 4 force evals / step (4x cost)</div>
                     <div>• Energy: High single-step accuracy, but non-symplectic (energy drifts over long epochs)</div>
                   </div>
                 </div>
 
-                <div className={`p-2 border ${config.integrator === 'euler' ? 'bg-[#161b22] border-[#f85149]' : 'bg-[#0d111a] border-[#1b2230]'}`}>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#f0f6fc]">
+                <div className={`p-2.5 border ${config.integrator === 'euler' ? 'bg-neutral-900 border-rose-600' : 'bg-neutral-950 border-neutral-800'}`}>
+                  <div className="flex items-center justify-between text-xs font-bold text-white">
                     <span>Explicit Euler</span>
-                    <span className="text-[9px] px-1 bg-[#2b1f13] text-[#f85149]">UNSTABLE</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-rose-950 text-rose-300 font-semibold">UNSTABLE</span>
                   </div>
-                  <div className="text-[9px] text-[#8b949e] mt-1 space-y-0.5">
+                  <div className="text-xs text-neutral-400 mt-1.5 space-y-1">
                     <div>• Order: 1st Order Explicit</div>
                     <div>• Evaluations: 1 force eval / step</div>
                     <div>• Energy: Adds artificial energy every step; orbits spiral outward uncontrollably</div>
@@ -432,27 +461,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             )}
 
-            {/* 5. CHAOS & LYAPUNOV SENSITIVITY */}
+            {/* 5. CHAOS & LYAPUNOV SENSITIVITY (Zero 'e' Notation) */}
             {activeTab === 'chaos' && chaosHistory.length > 0 && (
-              <div className="h-full flex items-center gap-3">
+              <div className="h-full flex items-center gap-3.5">
                 <canvas
                   ref={chaosCanvasRef}
                   width={680}
-                  height={115}
-                  className="bg-[#0d111a] border border-[#1b2230] h-full flex-1"
+                  height={125}
+                  className="bg-neutral-950 border border-neutral-800 h-full flex-1"
                 />
-                <div className="w-56 shrink-0 bg-[#0d111a] border border-[#1b2230] p-2 space-y-1 text-[10px]">
-                  <div className="text-[#d29922] uppercase font-bold border-b border-[#1b2230] pb-1 mb-1">
+                <div className="w-60 shrink-0 bg-neutral-950 border border-neutral-800 p-2.5 space-y-1.5 text-xs">
+                  <div className="text-amber-400 uppercase font-bold border-b border-neutral-800 pb-1 mb-1">
                     LYAPUNOV DIVERGENCE
                   </div>
-                  <p className="text-[9px] text-[#8b949e] leading-snug">
-                    Tracks distance between twin systems starting with a 10⁻⁶ velocity perturbation:
+                  <p className="text-xs text-neutral-300 leading-snug">
+                    Tracks distance between twin systems starting with microscopic velocity perturbation:
                   </p>
-                  <div className="text-[#f0f6fc] font-bold">
+                  <div className="text-white font-bold font-mono text-sm">
                     Δr(t) ~ Δr(0) · e^(λt)
                   </div>
-                  <p className="text-[8px] text-[#484f58] pt-1 border-t border-[#1b2230]">
-                    Positive slope on this logarithmic scale proves physical deterministic chaos.
+                  <p className="text-xs text-neutral-400 pt-1 border-t border-neutral-800">
+                    Positive slope verifies physical deterministic chaos and sensitive dependence.
                   </p>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { PresetSystem, CelestialBody, BodyType } from '../physics/types';
 import { ALL_PRESETS } from '../presets';
+import { formatDynamicMass } from '../physics/units';
 import {
   FolderOpen,
   Save,
@@ -54,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [velX, setVelX] = useState(0.0);
   const [velY, setVelY] = useState(0.0);
   const [velZ, setVelZ] = useState(4.44); // ~sqrt(4*pi^2 / 2)
-  const [color, setColor] = useState('#388bfd');
+  const [color, setColor] = useState('#e4e4e7');
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -82,39 +83,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="absolute top-11 left-0 bottom-0 z-30 flex select-none pointer-events-none">
+    <aside className="absolute top-12 left-0 bottom-0 z-30 flex select-none pointer-events-none font-sans">
       <div
-        className={`pointer-events-auto h-full bg-[#090d16] border-r border-[#1b2230] flex flex-col transition-all duration-200 ${
-          isOpen ? 'w-72' : 'w-8'
+        className={`pointer-events-auto h-full bg-black border-r border-neutral-800 flex flex-col transition-all duration-200 shadow-xl ${
+          isOpen ? 'w-80' : 'w-10'
         }`}
       >
         {/* Sidebar Header Bar */}
-        <div className="h-8 px-2.5 bg-[#0d111a] border-b border-[#1b2230] flex items-center justify-between text-[11px] font-mono">
+        <div className="h-10 px-3 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between text-xs font-semibold">
           {isOpen ? (
-            <span className="font-bold text-[#c9d1d9] uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-white uppercase tracking-wider flex items-center gap-2">
               LABORATORY CONTROL
             </span>
           ) : (
-            <span className="text-[#8b949e] font-bold text-center w-full">»</span>
+            <span className="text-neutral-400 font-bold text-center w-full">»</span>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="text-[#8b949e] hover:text-[#f0f6fc] p-0.5 hover:bg-[#161b22] transition"
+            className="text-neutral-400 hover:text-white p-1 hover:bg-neutral-800 transition"
             title={isOpen ? 'Collapse Navigation' : 'Expand Navigation'}
           >
-            {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+            {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </button>
         </div>
 
         {isOpen && (
           <>
             {/* Secondary Tabs */}
-            <div className="grid grid-cols-4 bg-[#090d16] border-b border-[#1b2230] text-[10px] font-mono">
+            <div className="grid grid-cols-4 bg-neutral-950 border-b border-neutral-800 text-xs">
               {[
-                { id: 'experiments', label: 'EXPERIMENTS', icon: FlaskConical },
-                { id: 'catalog', label: `CATALOG (${bodies.length})`, icon: Database },
+                { id: 'experiments', label: 'PRESETS', icon: FlaskConical },
+                { id: 'catalog', label: `BODIES (${bodies.length})`, icon: Database },
                 { id: 'insert', label: 'INSERT', icon: PlusSquare },
-                { id: 'io', label: 'I/O DATA', icon: FileText },
+                { id: 'io', label: 'EXPORT', icon: FileText },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -122,27 +123,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                    className={`py-2 px-1 flex flex-col items-center gap-0.5 border-r border-[#1b2230] transition rounded-none ${
+                    className={`py-2.5 px-1.5 flex flex-col items-center gap-1 border-r border-neutral-800 transition ${
                       isActive
-                        ? 'bg-[#161b22] text-[#58a6ff] font-bold border-b-2 border-b-[#388bfd]'
-                        : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#0d111a]'
+                        ? 'bg-neutral-900 text-white font-bold border-b-2 border-b-white'
+                        : 'text-neutral-400 hover:text-white hover:bg-neutral-900/50'
                     }`}
                   >
-                    <Icon size={12} />
-                    <span className="truncate w-full text-center text-[9px]">{tab.label}</span>
+                    <Icon size={14} />
+                    <span className="truncate w-full text-center text-xs font-medium">{tab.label}</span>
                   </button>
                 );
               })}
             </div>
 
             {/* Tab Body */}
-            <div className="flex-1 overflow-y-auto p-2.5 space-y-2 text-xs">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
               {/* TAB 1: EXPERIMENTS & PRESETS */}
               {activeTab === 'experiments' && (
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-mono uppercase text-[#8b949e] pb-1 border-b border-[#1b2230] flex items-center justify-between">
-                    <span>ASTROPHYSICS EXPERIMENT LAB</span>
-                    <span className="text-[#388bfd] font-bold">{ALL_PRESETS.length} Systems</span>
+                <div className="space-y-2">
+                  <div className="text-xs uppercase text-neutral-400 pb-1.5 border-b border-neutral-800 flex items-center justify-between font-bold">
+                    <span>ASTROPHYSICS SYSTEMS</span>
+                    <span className="text-white">{ALL_PRESETS.length} Systems</span>
                   </div>
 
                   {ALL_PRESETS.map((p, idx) => {
@@ -151,25 +152,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div
                         key={p.id}
                         onClick={() => onSelectPreset(p)}
-                        className={`p-2 border cursor-pointer transition text-left ${
+                        className={`p-2.5 border cursor-pointer transition text-left ${
                           isCurrent
-                            ? 'bg-[#161b22] border-[#388bfd] text-[#f0f6fc]'
-                            : 'bg-[#0d111a] border-[#21262d] text-[#c9d1d9] hover:bg-[#161b22] hover:border-[#30363d]'
+                            ? 'bg-neutral-900 border-white text-white'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:bg-neutral-900 hover:border-neutral-700'
                         }`}
                       >
-                        <div className="flex items-center justify-between font-mono text-[11px]">
-                          <span className="font-bold flex items-center gap-1.5">
-                            <span className="text-[#8b949e]">0{idx + 1}.</span> {p.name}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold flex items-center gap-2">
+                            <span className="text-neutral-400">0{idx + 1}.</span> {p.name}
                           </span>
-                          <span className="text-[10px] text-[#58a6ff] bg-[#1f2937] px-1 rounded-none">
+                          <span className="text-xs text-white bg-neutral-800 px-1.5 py-0.5 font-mono">
                             {p.bodies.length} b
                           </span>
                         </div>
-                        <p className="text-[10px] text-[#8b949e] mt-1 leading-snug line-clamp-2">
+                        <p className="text-xs text-neutral-400 mt-1 leading-snug">
                           {p.description}
                         </p>
                         {p.objective && (
-                          <div className="text-[9px] font-mono text-[#e3b341] mt-1 pt-1 border-t border-[#1b2230] truncate">
+                          <div className="text-xs text-amber-400 mt-1.5 pt-1.5 border-t border-neutral-800 truncate">
                             OBJ: {p.objective}
                           </div>
                         )}
@@ -181,19 +182,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* TAB 2: CATALOG DATA TABLE */}
               {activeTab === 'catalog' && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-2 text-[#484f58]" />
+                    <Search size={14} className="absolute left-2.5 top-2.5 text-neutral-500" />
                     <input
                       type="text"
                       placeholder="Filter bodies by name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-7 pr-2 py-1 bg-[#0d111a] border border-[#21262d] text-xs text-[#f0f6fc] placeholder-[#484f58] font-mono rounded-none focus:outline-none focus:border-[#388bfd]"
+                      className="w-full pl-8 pr-2.5 py-1.5 bg-neutral-950 border border-neutral-700 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                     />
                   </div>
 
-                  <div className="space-y-0.5 max-h-[calc(100vh-200px)] overflow-y-auto font-mono text-[11px]">
+                  <div className="space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto text-xs">
                     {filteredBodies.map((b) => {
                       const isSelected = selectedBodyId === b.id;
                       const speedAU = Math.hypot(b.velocity.x, b.velocity.y, b.velocity.z);
@@ -201,25 +202,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div
                           key={b.id}
                           onClick={() => onSelectBody(b.id)}
-                          className={`px-2 py-1.5 flex items-center justify-between border cursor-pointer transition ${
+                          className={`px-2.5 py-2 flex items-center justify-between border cursor-pointer transition ${
                             isSelected
-                              ? 'bg-[#161b22] border-[#388bfd] text-[#f0f6fc]'
-                              : 'bg-[#0d111a] border-[#1b2230] text-[#c9d1d9] hover:bg-[#161b22]'
+                              ? 'bg-neutral-900 border-white text-white font-semibold'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:bg-neutral-900'
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 truncate">
+                          <div className="flex items-center gap-2 truncate">
                             <span
-                              className="w-2 h-2 shrink-0 rounded-none"
+                              className="w-2.5 h-2.5 shrink-0 border border-white/20"
                               style={{ backgroundColor: b.color }}
                             />
                             <span className="truncate">{b.name}</span>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-[#8b949e]">
-                              {b.mass >= 0.01 ? `${b.mass.toFixed(2)} M☉` : `${(b.mass * 332946).toFixed(1)} M⊕`}
+                          <div className="flex items-center gap-2.5 shrink-0 font-mono text-xs">
+                            <span className="text-neutral-400 font-sans">
+                              {formatDynamicMass(b.mass)}
                             </span>
-                            <span className="text-[10px] text-[#58a6ff]">
+                            <span className="text-white">
                               {(speedAU * 4.74).toFixed(1)} km/s
                             </span>
                             <button
@@ -227,10 +228,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 e.stopPropagation();
                                 onDeleteBody(b.id);
                               }}
-                              className="text-[#484f58] hover:text-[#f85149] p-0.5"
+                              className="text-neutral-500 hover:text-rose-400 p-1"
                               title="Delete Body"
                             >
-                              <Trash2 size={11} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </div>
@@ -242,27 +243,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* TAB 3: NUMERICAL BODY INSERTION */}
               {activeTab === 'insert' && (
-                <form onSubmit={handleCreateBody} className="space-y-2 text-[11px] font-mono">
-                  <div className="text-[10px] uppercase text-[#8b949e] pb-1 border-b border-[#1b2230]">
+                <form onSubmit={handleCreateBody} className="space-y-2.5 text-xs">
+                  <div className="text-xs uppercase text-neutral-400 pb-1.5 border-b border-neutral-800 font-bold">
                     MANUAL VECTOR INSERTION
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">DESIGNATION / NAME</label>
+                    <label className="text-neutral-400 block font-medium">DESIGNATION / NAME</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full mt-0.5 px-2 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none focus:outline-none focus:border-[#388bfd]"
+                      className="w-full mt-1 px-2.5 py-1.5 bg-neutral-950 border border-neutral-700 text-white focus:outline-none focus:border-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">CLASSIFICATION</label>
+                    <label className="text-neutral-400 block font-medium">CLASSIFICATION</label>
                     <select
                       value={type}
                       onChange={(e) => setType(e.target.value as BodyType)}
-                      className="w-full mt-0.5 px-2 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none focus:outline-none focus:border-[#388bfd]"
+                      className="w-full mt-1 px-2.5 py-1.5 bg-neutral-950 border border-neutral-700 text-white focus:outline-none focus:border-white cursor-pointer"
                     >
                       <option value="planet">Planet (Planetesimal)</option>
                       <option value="star">Star (Solar Mass Core)</option>
@@ -273,26 +274,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">MASS (M_SUN)</label>
+                    <label className="text-neutral-400 block font-medium">MASS (M☉ SOLAR UNITS)</label>
                     <input
                       type="number"
                       step="any"
                       value={mass}
                       onChange={(e) => setMass(parseFloat(e.target.value) || 0)}
-                      className="w-full mt-0.5 px-2 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none focus:outline-none focus:border-[#388bfd]"
+                      className="w-full mt-1 px-2.5 py-1.5 bg-neutral-950 border border-neutral-700 text-white font-mono focus:outline-none focus:border-white"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">POSITION VECTOR [X, Y, Z] (AU)</label>
-                    <div className="grid grid-cols-3 gap-1 mt-0.5">
+                    <label className="text-neutral-400 block font-medium">POSITION [X, Y, Z] (AU)</label>
+                    <div className="grid grid-cols-3 gap-1.5 mt-1">
                       <input
                         type="number"
                         step="0.01"
                         placeholder="X"
                         value={posX}
                         onChange={(e) => setPosX(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                       <input
                         type="number"
@@ -300,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         placeholder="Y"
                         value={posY}
                         onChange={(e) => setPosY(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                       <input
                         type="number"
@@ -308,21 +309,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         placeholder="Z"
                         value={posZ}
                         onChange={(e) => setPosZ(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">VELOCITY VECTOR [VX, VY, VZ] (AU/YR)</label>
-                    <div className="grid grid-cols-3 gap-1 mt-0.5">
+                    <label className="text-neutral-400 block font-medium">VELOCITY [VX, VY, VZ] (AU/YR)</label>
+                    <div className="grid grid-cols-3 gap-1.5 mt-1">
                       <input
                         type="number"
                         step="0.01"
                         placeholder="Vx"
                         value={velX}
                         onChange={(e) => setVelX(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                       <input
                         type="number"
@@ -330,7 +331,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         placeholder="Vy"
                         value={velY}
                         onChange={(e) => setVelY(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                       <input
                         type="number"
@@ -338,57 +339,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         placeholder="Vz"
                         value={velZ}
                         onChange={(e) => setVelZ(parseFloat(e.target.value) || 0)}
-                        className="px-1.5 py-1 bg-[#0d111a] border border-[#21262d] text-[#f0f6fc] rounded-none text-center"
+                        className="px-2 py-1.5 bg-neutral-950 border border-neutral-700 text-white text-center font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[#8b949e] block text-[10px]">COLOR IDENTIFIER</label>
+                    <label className="text-neutral-400 block font-medium">COLOR IDENTIFIER</label>
                     <input
                       type="color"
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
-                      className="w-full h-7 mt-0.5 bg-[#0d111a] border border-[#21262d] p-0.5 cursor-pointer rounded-none"
+                      className="w-full h-8 mt-1 bg-neutral-950 border border-neutral-700 p-0.5 cursor-pointer"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-1.5 px-3 bg-[#238636] hover:bg-[#2ea043] text-white font-bold text-xs uppercase tracking-wider rounded-none transition"
+                    className="w-full py-2 px-3 bg-white hover:bg-neutral-200 text-black font-bold text-xs uppercase tracking-wider transition"
                   >
-                    INSERT INTO SYSTEM
+                    INSERT INTO SIMULATION
                   </button>
                 </form>
               )}
 
-              {/* TAB 4: I/O SCIENTIFIC EXPORT */}
+              {/* TAB 4: I/O EXPORT */}
               {activeTab === 'io' && (
-                <div className="space-y-3 font-mono text-[11px]">
-                  <div className="text-[10px] uppercase text-[#8b949e] pb-1 border-b border-[#1b2230]">
+                <div className="space-y-3.5 text-xs">
+                  <div className="text-xs uppercase text-neutral-400 pb-1.5 border-b border-neutral-800 font-bold">
                     DATA PERSISTENCE & SCIENTIFIC EXPORT
                   </div>
 
-                  <div className="space-y-1.5">
-                    <span className="text-[#8b949e] text-[10px] block">SYSTEM ARCHIVAL (JSON)</span>
+                  <div className="space-y-2">
+                    <span className="text-neutral-400 font-medium block">SYSTEM CONFIGURATION (JSON)</span>
                     <button
                       onClick={onExportJSON}
-                      className="w-full py-1.5 px-2.5 bg-[#161b22] border border-[#30363d] hover:border-[#58a6ff] text-[#f0f6fc] flex items-center justify-between transition rounded-none"
+                      className="w-full py-2 px-3 bg-neutral-900 border border-neutral-700 hover:border-white text-white flex items-center justify-between transition"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <Save size={12} className="text-[#58a6ff]" /> Export Configuration
+                      <span className="flex items-center gap-2">
+                        <Save size={14} className="text-white" /> Export Configuration
                       </span>
-                      <span className="text-[#8b949e] text-[9px]">.JSON</span>
+                      <span className="text-neutral-400 font-mono text-xs">.JSON</span>
                     </button>
 
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-1.5 px-2.5 bg-[#161b22] border border-[#30363d] hover:border-[#58a6ff] text-[#f0f6fc] flex items-center justify-between transition rounded-none"
+                      className="w-full py-2 px-3 bg-neutral-900 border border-neutral-700 hover:border-white text-white flex items-center justify-between transition"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <FolderOpen size={12} className="text-[#e3b341]" /> Load Configuration
+                      <span className="flex items-center gap-2">
+                        <FolderOpen size={14} className="text-amber-400" /> Load Configuration
                       </span>
-                      <span className="text-[#8b949e] text-[9px]">.JSON</span>
+                      <span className="text-neutral-400 font-mono text-xs">.JSON</span>
                     </button>
                     <input
                       ref={fileInputRef}
@@ -403,18 +404,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     />
                   </div>
 
-                  <div className="space-y-1.5 pt-2 border-t border-[#1b2230]">
-                    <span className="text-[#8b949e] text-[10px] block">NUMERICAL TELEMETRY LOG (CSV)</span>
+                  <div className="space-y-2 pt-2.5 border-t border-neutral-800">
+                    <span className="text-neutral-400 font-medium block">NUMERICAL TELEMETRY LOG (CSV)</span>
                     <button
                       onClick={onExportCSV}
-                      className="w-full py-1.5 px-2.5 bg-[#161b22] border border-[#30363d] hover:border-[#3fb950] text-[#f0f6fc] flex items-center justify-between transition rounded-none"
+                      className="w-full py-2 px-3 bg-neutral-900 border border-neutral-700 hover:border-white text-white flex items-center justify-between transition"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <FileSpreadsheet size={12} className="text-[#3fb950]" /> Export Telemetry History
+                      <span className="flex items-center gap-2">
+                        <FileSpreadsheet size={14} className="text-emerald-400" /> Export Telemetry History
                       </span>
-                      <span className="text-[#8b949e] text-[9px]">.CSV</span>
+                      <span className="text-neutral-400 font-mono text-xs">.CSV</span>
                     </button>
-                    <p className="text-[9px] text-[#8b949e] leading-snug">
+                    <p className="text-neutral-400 text-xs leading-normal">
                       Exports timestamped Kinetic, Potential, and Hamiltonian Energy time-series.
                     </p>
                   </div>

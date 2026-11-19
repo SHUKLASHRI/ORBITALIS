@@ -240,7 +240,7 @@ export function App() {
   const selectedBody = bodies.find((b) => b.id === selectedBodyId) || null;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#06080d] text-[#c9d1d9] select-none font-mono">
+    <div className="relative w-screen h-screen overflow-hidden bg-black text-white select-none font-sans">
       {/* Top Header */}
       <Header
         config={config}
@@ -256,7 +256,7 @@ export function App() {
       />
 
       {/* Main 3D Simulation Viewport */}
-      <main className="absolute inset-0 pt-11 pb-8">
+      <main className="absolute inset-0 pt-12 pb-10">
         <ThreeViewport
           bodies={bodies}
           config={config}

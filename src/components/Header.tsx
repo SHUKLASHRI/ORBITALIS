@@ -43,35 +43,36 @@ export const Header: React.FC<HeaderProps> = ({
   const years = simulationTimeYears.toFixed(3);
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 h-11 bg-[#090d16] border-b border-[#1b2230] px-3 flex items-center justify-between text-xs select-none">
-      {/* Left: Brand Identity & Telemetry Status */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 pr-3 border-r border-[#1b2230]">
-          <span className="font-mono font-bold tracking-widest text-[#f0f6fc] text-xs">ORBITALIS</span>
-          <span className="px-1.5 py-0.2 bg-[#161b22] text-[#388bfd] border border-[#30363d] rounded-none font-mono text-[9px] uppercase tracking-wider">
-            v1.0-NEC
+    <header className="absolute top-0 left-0 right-0 z-40 h-12 bg-black border-b border-neutral-800 px-3.5 flex items-center justify-between text-xs select-none font-sans">
+      {/* Left: Brand & Telemetry Status */}
+      <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-2.5 pr-3.5 border-r border-neutral-800">
+          <span className="font-bold tracking-widest text-white text-sm">ORBITALIS</span>
+          <span className="px-1.5 py-0.5 bg-neutral-900 text-white border border-neutral-700 font-mono text-xs uppercase tracking-wider">
+            NEC-ASTRO
           </span>
         </div>
 
-        {/* Telemetry Status Line */}
-        <div className="hidden lg:flex items-center gap-3 font-mono text-[11px] text-[#8b949e]">
+        {/* Telemetry Status Line (Monochrome & Off-white) */}
+        <div className="hidden lg:flex items-center gap-4 text-xs text-neutral-400">
           <div>
-            STATUS: <span className="text-[#3fb950] font-bold">NOMINAL</span>
+            STATUS: <span className="text-emerald-400 font-bold">NOMINAL</span>
           </div>
           <div>
-            EXPERIMENT: <span className="text-[#f0f6fc]">{presetName}</span>
+            SYSTEM: <span className="text-white font-medium">{presetName}</span>
           </div>
           <div>
-            BODIES: <span className="text-[#58a6ff]">{bodyCount}</span>
+            BODIES: <span className="text-white font-semibold">{bodyCount}</span>
           </div>
           <div>
-            T: <span className="text-[#f0f6fc]">{years} yr</span> <span className="text-[#484f58]">({days} d)</span>
+            TIME: <span className="text-white font-semibold">{years} yr</span>{' '}
+            <span className="text-neutral-500">({days.toLocaleString()} d)</span>
           </div>
         </div>
       </div>
 
-      {/* Center: Mode Switcher Tabs */}
-      <div className="flex items-center bg-[#0d1117] border border-[#21262d] rounded-none p-0.5 text-[11px]">
+      {/* Center: Mode Switcher Tabs (Pure Black & White) */}
+      <div className="flex items-center bg-neutral-950 border border-neutral-800 p-0.5 text-xs">
         {[
           { id: 'explorer', label: '01. Explorer', icon: Eye },
           { id: 'laboratory', label: '02. Laboratory', icon: Sliders },
@@ -83,13 +84,13 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               key={tab.id}
               onClick={() => onSetAppMode(tab.id as AppMode)}
-              className={`px-3 py-1 flex items-center gap-1.5 font-mono text-[11px] transition rounded-none ${
+              className={`px-3.5 py-1.5 flex items-center gap-1.5 font-medium transition ${
                 isActive
-                  ? 'bg-[#1f2937] text-[#f0f6fc] font-bold border border-[#388bfd]'
-                  : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22]'
+                  ? 'bg-white text-black font-bold'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Icon size={11} />
+              <Icon size={13} />
               <span>{tab.label}</span>
             </button>
           );
@@ -97,44 +98,44 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right: Engine Playback Controls & Settings */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         {/* Play/Pause/Step Buttons */}
-        <div className="flex items-center bg-[#0d1117] border border-[#21262d] rounded-none">
+        <div className="flex items-center bg-neutral-950 border border-neutral-800">
           <button
             onClick={() => onUpdateConfig({ isPaused: !config.isPaused })}
-            className={`px-2.5 py-1 text-[11px] font-mono flex items-center gap-1 transition ${
+            className={`px-3 py-1.5 text-xs flex items-center gap-1.5 transition ${
               config.isPaused
-                ? 'bg-[#d29922] text-[#0d1117] font-bold'
-                : 'bg-[#238636] text-[#ffffff] font-bold'
+                ? 'bg-amber-600 text-white font-bold'
+                : 'bg-white text-black font-bold hover:bg-neutral-200'
             }`}
             title={config.isPaused ? 'Resume Simulation (Space)' : 'Pause Simulation (Space)'}
           >
-            {config.isPaused ? <Play size={11} fill="currentColor" /> : <Pause size={11} fill="currentColor" />}
+            {config.isPaused ? <Play size={12} fill="currentColor" /> : <Pause size={12} fill="currentColor" />}
             <span>{config.isPaused ? 'RESUME' : 'PAUSE'}</span>
           </button>
 
           <button
             onClick={onStepFrame}
             disabled={!config.isPaused}
-            className="p-1.5 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22] disabled:opacity-30 border-l border-[#21262d] transition"
-            title="Step 1 Numerical Frame"
+            className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 disabled:opacity-30 border-l border-neutral-800 transition"
+            title="Step 1 Frame"
           >
-            <SkipForward size={12} />
+            <SkipForward size={14} />
           </button>
 
           <button
             onClick={onReset}
-            className="p-1.5 text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#161b22] border-l border-[#21262d] transition"
+            className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 border-l border-neutral-800 transition"
             title="Reset Experiment"
           >
-            <RotateCcw size={12} />
+            <RotateCcw size={14} />
           </button>
         </div>
 
         {/* Speed Slider */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-[#0d1117] border border-[#21262d] px-2 py-0.5 font-mono text-[10px]">
-          <span className="text-[#8b949e]">SPEED:</span>
-          <span className="text-[#58a6ff] font-bold w-9 text-right">
+        <div className="hidden sm:flex items-center gap-2 bg-neutral-950 border border-neutral-800 px-2.5 py-1 text-xs">
+          <span className="text-neutral-400 font-medium">SPEED:</span>
+          <span className="text-white font-bold w-9 text-right font-mono">
             {config.timeMultiplier.toFixed(1)}x
           </span>
           <input
@@ -144,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
             step="0.1"
             value={config.timeMultiplier}
             onChange={(e) => onUpdateConfig({ timeMultiplier: parseFloat(e.target.value) })}
-            className="w-14 accent-[#388bfd] h-1 bg-[#21262d] rounded-none cursor-pointer"
+            className="w-16 accent-white h-1.5 bg-neutral-800 cursor-pointer"
           />
         </div>
 
@@ -152,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
         <select
           value={config.integrator}
           onChange={(e) => onUpdateConfig({ integrator: e.target.value as IntegratorType })}
-          className="bg-[#0d1117] border border-[#21262d] text-[#c9d1d9] font-mono text-[10px] px-2 py-1 rounded-none focus:outline-none cursor-pointer"
+          className="bg-neutral-950 border border-neutral-800 text-white text-xs px-2.5 py-1.5 focus:outline-none cursor-pointer"
         >
           <option value="verlet">Velocity Verlet (Symplectic)</option>
           <option value="rk4">Runge-Kutta 4 (RK4)</option>
@@ -160,58 +161,58 @@ export const Header: React.FC<HeaderProps> = ({
         </select>
 
         {/* Viewport Layers Toggle Buttons */}
-        <div className="flex items-center gap-0.5 bg-[#0d1117] border border-[#21262d] p-0.5">
+        <div className="flex items-center gap-0.5 bg-neutral-950 border border-neutral-800 p-0.5">
           <button
             onClick={() => onUpdateConfig({ showGrid: !config.showGrid })}
-            className={`p-1 border transition ${
+            className={`p-1.5 border transition ${
               config.showGrid
-                ? 'bg-[#1f2937] text-[#58a6ff] border-[#388bfd]'
-                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+                ? 'bg-neutral-800 text-white border-white'
+                : 'text-neutral-400 border-transparent hover:text-white'
             }`}
             title="Ecliptic Reference Grid"
           >
-            <Compass size={13} />
+            <Compass size={14} />
           </button>
 
           <button
             onClick={() => onUpdateConfig({ showTrails: !config.showTrails })}
-            className={`p-1 border transition ${
+            className={`p-1.5 border transition ${
               config.showTrails
-                ? 'bg-[#1f2937] text-[#58a6ff] border-[#388bfd]'
-                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+                ? 'bg-neutral-800 text-white border-white'
+                : 'text-neutral-400 border-transparent hover:text-white'
             }`}
             title="Orbital Trajectory Trails"
           >
-            <Layers size={13} />
+            <Layers size={14} />
           </button>
 
           <button
             onClick={() => onUpdateConfig({ showBarycenter: !config.showBarycenter })}
-            className={`p-1 border transition ${
+            className={`p-1.5 border transition ${
               config.showBarycenter
-                ? 'bg-[#1f2937] text-[#d29922] border-[#d29922]'
-                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+                ? 'bg-neutral-800 text-white border-white'
+                : 'text-neutral-400 border-transparent hover:text-white'
             }`}
             title="System Center of Mass (Barycentre)"
           >
-            <Crosshair size={13} />
+            <Crosshair size={14} />
           </button>
 
           <button
             onClick={() => onUpdateConfig({ useRealisticTextures: !config.useRealisticTextures })}
-            className={`p-1 border transition ${
+            className={`p-1.5 border transition ${
               config.useRealisticTextures
-                ? 'bg-[#1f2937] text-[#3fb950] border-[#238636]'
-                : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc]'
+                ? 'bg-neutral-800 text-white border-white'
+                : 'text-neutral-400 border-transparent hover:text-white'
             }`}
             title="Photorealistic Web CDN Textures"
           >
-            <Image size={13} />
+            <Image size={14} />
           </button>
         </div>
 
         {/* FPS badge */}
-        <div className="px-2 py-0.5 bg-[#0d1117] border border-[#21262d] text-[10px] font-mono text-[#3fb950]">
+        <div className="px-2.5 py-1 bg-neutral-950 border border-neutral-800 text-xs font-mono text-emerald-400 font-semibold">
           {fps} FPS
         </div>
       </div>

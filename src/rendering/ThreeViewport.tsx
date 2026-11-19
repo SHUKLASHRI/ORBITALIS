@@ -68,9 +68,9 @@ export function ThreeViewport({
     const container = containerRef.current;
     if (!container) return;
 
-    // 1. Scene with Deep Near-Black Astronomical Void
+    // 1. Scene with Pure Black Astronomical Void
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x06080d);
+    scene.background = new THREE.Color(0x000000);
     sceneRef.current = scene;
 
     // 2. Camera
@@ -149,8 +149,8 @@ export function ThreeViewport({
     const starField = new THREE.Points(starGeom, starMaterial);
     scene.add(starField);
 
-    // 7. Scientific Ecliptic Coordinate Grid (Hairline Grid)
-    const grid = new THREE.GridHelper(60, 60, 0x1f2937, 0x111827);
+    // 7. Scientific Ecliptic Coordinate Grid (Off-white Lines)
+    const grid = new THREE.GridHelper(60, 60, 0x333333, 0x1a1a1a);
     grid.position.y = -0.01;
     scene.add(grid);
     gridHelperRef.current = grid;
@@ -290,12 +290,12 @@ export function ThreeViewport({
             group.add(ring);
           }
 
-          // Technical Selection Reticle (Square Brackets, Not Neon Pill)
+          // Technical Selection Reticle (Square Brackets - Pure White)
           const reticleGeom = new THREE.RingGeometry(1.2, 1.25, 4);
           reticleGeom.rotateX(Math.PI / 2);
           reticleGeom.rotateY(Math.PI / 4);
           const reticleMat = new THREE.MeshBasicMaterial({
-            color: 0x58a6ff,
+            color: 0xffffff,
             side: THREE.DoubleSide,
           });
           const reticle = new THREE.Mesh(reticleGeom, reticleMat);
