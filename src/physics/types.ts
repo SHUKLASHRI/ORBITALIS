@@ -76,3 +76,4 @@ export interface PresetSystem {
   config: Partial<SimulationConfig>;
   bodies: CelestialBody[];
 }
+

@@ -398,3 +398,4 @@ export function ThreeViewport({
 
   return <div ref={containerRef} className="relative w-full h-full cursor-grab active:cursor-grabbing select-none" />;
 }
+

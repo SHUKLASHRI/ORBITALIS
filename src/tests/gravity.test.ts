@@ -87,3 +87,4 @@ describe('3D Newtonian Gravity Engine', () => {
     expect(f1z + f2z).toBeCloseTo(0, 8);
   });
 });
+

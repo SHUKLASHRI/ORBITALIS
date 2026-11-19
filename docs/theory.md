@@ -59,3 +59,4 @@ Forward Euler constantly injects artificial numerical energy, illustrating why n
 * **Linear Momentum:** $\vec{P} = \sum_i m_i \vec{v}_i$
 * **Angular Momentum:** $\vec{L} = \sum_i \vec{r}_i \times (m_i \vec{v}_i)$
 * **Center of Mass (Barycenter):** $\vec{R}_{CM} = \frac{\sum m_i \vec{r}_i}{\sum m_i}$
+

@@ -52,3 +52,4 @@ describe('Conservation Laws in 3D N-Body Simulation', () => {
     expect(final.totalLinearMomentum).toBeCloseTo(0, 5);
   });
 });
+

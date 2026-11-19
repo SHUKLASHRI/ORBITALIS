@@ -24,3 +24,4 @@ export const KM_PER_S_TO_AU_PER_YR = 1 / AU_PER_YR_TO_KM_PER_S;   // ≈ 0.21094
 
 // Default Plummer Softening parameter (in AU)
 export const DEFAULT_SOFTENING = 0.001; // AU
+

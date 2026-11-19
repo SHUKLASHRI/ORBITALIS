@@ -22,3 +22,4 @@
 
 ## 6. 100–500 Star Cluster Benchmark
 * **Physics Check:** Benchmark the direct $O(N^2)$ N-body gravity calculation at 200 to 500 interacting bodies with 60 FPS rendering.
+
