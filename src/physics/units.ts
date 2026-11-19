@@ -317,3 +317,4 @@ export function formatAxisLabel(val: number): string {
   if (abs >= 1e-9) return `${sign}${(abs * 1e9).toFixed(2)}n`;
   return `${sign}${abs.toFixed(2)}`;
 }
+

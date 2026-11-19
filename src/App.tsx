@@ -1,20 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { CelestialBody, SimulationConfig, PresetSystem, AppMode } from './physics/types';
+import type { CelestialBody, SimulationConfig, PresetSystem } from './physics/types';
 import { G_ASTRONOMICAL, DEFAULT_SOFTENING } from './physics/constants';
 import { PhysicsEngine } from './physics/PhysicsEngine';
-import { ChaosExperiment, type ChaosDivergencePoint } from './physics/chaos';
 import { PRESET_SOLAR_SYSTEM } from './presets';
 import { ThreeViewport } from './rendering/ThreeViewport';
 import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
+import { LeftToolbar } from './components/LeftToolbar';
 import { Inspector } from './components/Inspector';
-import { Dashboard } from './components/Dashboard';
+import { PlaybackBar } from './components/PlaybackBar';
+import { BottomAnalysis } from './components/BottomAnalysis';
+import { StatusBadge } from './components/StatusBadge';
+import { SettingsModal } from './components/SettingsModal';
+import { AboutModal } from './components/AboutModal';
+import { ScenariosModal } from './components/ScenariosModal';
 
 export function App() {
   const initialPreset = PRESET_SOLAR_SYSTEM;
 
-  // Interaction Mode (01. Explorer, 02. Laboratory, 03. Research)
-  const [appMode, setAppMode] = useState<AppMode>('laboratory');
+  // Navigation tab state
+  const [currentTab, setCurrentTab] = useState<'simulate' | 'analyze' | 'scenarios' | 'about'>('simulate');
 
   // Simulation Configuration
   const [config, setConfig] = useState<SimulationConfig>({
@@ -28,7 +32,7 @@ export function App() {
     softening: DEFAULT_SOFTENING,
     trailLength: 80,
     showTrails: true,
-    showVectors: true,
+    showVectors: false,
     showGrid: true,
     showBarycenter: false,
     showLabels: true,
@@ -39,20 +43,20 @@ export function App() {
   const [currentPreset, setCurrentPreset] = useState<PresetSystem>(initialPreset);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const [focusedBodyId, setFocusedBodyId] = useState<string | null>(null);
+  const [isFollowingBody, setIsFollowingBody] = useState<boolean>(false);
+  const [showAsteroidBelt, setShowAsteroidBelt] = useState<boolean>(true);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState<boolean>(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
+  const [isScenariosOpen, setIsScenariosOpen] = useState<boolean>(false);
   const [fps, setFps] = useState<number>(60);
-  const [chaosHistory, setChaosHistory] = useState<ChaosDivergencePoint[]>([]);
 
-  // Initialize standalone Physics Engine
+  // Standalone Physics Engine
   const physicsEngineRef = useRef<PhysicsEngine>(
     new PhysicsEngine(initialPreset.bodies, config)
   );
 
-  // Initialize Chaos Experiment tracker for deterministic chaos research
-  const chaosRef = useRef<ChaosExperiment>(
-    new ChaosExperiment(initialPreset.bodies)
-  );
-
-  // Reactive state for UI rendering
+  // Reactive state for UI
   const [bodies, setBodies] = useState<CelestialBody[]>(
     physicsEngineRef.current.getBodies()
   );
@@ -74,8 +78,6 @@ export function App() {
     setCurrentPreset(preset);
     physicsEngineRef.current.setBodies(preset.bodies);
     physicsEngineRef.current.resetTime();
-    chaosRef.current.reset(preset.bodies);
-    setChaosHistory([]);
 
     if (preset.config) {
       physicsEngineRef.current.setConfig(preset.config);
@@ -85,17 +87,17 @@ export function App() {
     setMeasurements(physicsEngineRef.current.getMeasurements());
     setSelectedBodyId(null);
     setFocusedBodyId(null);
+    setIsFollowingBody(false);
   }, []);
 
   // Reset Simulation
   const handleReset = useCallback(() => {
     physicsEngineRef.current.setBodies(currentPreset.bodies);
     physicsEngineRef.current.resetTime();
-    chaosRef.current.reset(currentPreset.bodies);
-    setChaosHistory([]);
     setBodies(physicsEngineRef.current.getBodies());
     setMeasurements(physicsEngineRef.current.getMeasurements());
     setSelectedBodyId(null);
+    setIsFollowingBody(false);
   }, [currentPreset]);
 
   // Step 1 Frame
@@ -120,15 +122,63 @@ export function App() {
     physicsEngineRef.current.removeBody(id);
     setBodies([...physicsEngineRef.current.getBodies()]);
     if (selectedBodyId === id) setSelectedBodyId(null);
-    if (focusedBodyId === id) setFocusedBodyId(null);
+    if (focusedBodyId === id) {
+      setFocusedBodyId(null);
+      setIsFollowingBody(false);
+    }
   }, [selectedBodyId, focusedBodyId]);
 
-  // Main High-Frequency Physics Simulation Loop
+  const handleDuplicateBody = useCallback((b: CelestialBody) => {
+    const clone: CelestialBody = {
+      ...b,
+      id: `body-${Date.now()}`,
+      name: `${b.name} (Copy)`,
+      position: { x: b.position.x * 1.05, y: b.position.y, z: b.position.z * 1.05 },
+      velocity: { x: b.velocity.x * 0.98, y: b.velocity.y, z: b.velocity.z * 0.98 },
+      trail: [],
+    };
+    physicsEngineRef.current.addBody(clone);
+    setBodies([...physicsEngineRef.current.getBodies()]);
+    setSelectedBodyId(clone.id);
+  }, []);
+
+  // Focus & Follow Camera
+  const handleToggleFocus = useCallback((id: string) => {
+    if (focusedBodyId === id) {
+      setFocusedBodyId(null);
+      setIsFollowingBody(false);
+    } else {
+      setFocusedBodyId(id);
+    }
+  }, [focusedBodyId]);
+
+  const handleToggleFollow = useCallback(() => {
+    if (!selectedBodyId) return;
+    if (isFollowingBody) {
+      setIsFollowingBody(false);
+    } else {
+      setFocusedBodyId(selectedBodyId);
+      setIsFollowingBody(true);
+    }
+  }, [selectedBodyId, isFollowingBody]);
+
+  // Handle Header Tabs
+  const handleSelectNavTab = (tab: 'simulate' | 'analyze' | 'scenarios' | 'about') => {
+    setCurrentTab(tab);
+    if (tab === 'analyze') {
+      setIsAnalysisOpen((prev) => !prev);
+    } else if (tab === 'scenarios') {
+      setIsScenariosOpen(true);
+    } else if (tab === 'about') {
+      setIsAboutOpen(true);
+    }
+  };
+
+  // High-Frequency Physics Simulation Loop
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
     let uiThrottleTimer = performance.now();
-    let chaosThrottleTimer = performance.now();
 
     const loop = (time: number) => {
       animId = requestAnimationFrame(loop);
@@ -139,22 +189,7 @@ export function App() {
       // Advance physics simulation
       const currentBodies = physicsEngineRef.current.step(deltaSeconds);
 
-      // Track Lyapunov chaos divergence if running a chaos experiment or in research mode
-      if (!config.isPaused && (currentPreset.id === 'chaos-experiment' || appMode === 'research')) {
-        if (time - chaosThrottleTimer >= 50) {
-          const pt = chaosRef.current.step(
-            config,
-            deltaSeconds * config.timeMultiplier,
-            physicsEngineRef.current.getTimeYears()
-          );
-          if (pt) {
-            setChaosHistory([...chaosRef.current.getHistory()]);
-          }
-          chaosThrottleTimer = time;
-        }
-      }
-
-      // Throttle React UI updates to ~30 FPS to avoid unnecessary DOM re-renders while keeping 3D 60 FPS
+      // Throttle React UI updates to ~30 FPS
       if (time - uiThrottleTimer >= 33) {
         setBodies([...currentBodies]);
         setMeasurements(physicsEngineRef.current.getMeasurements());
@@ -164,61 +199,9 @@ export function App() {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [config, currentPreset.id, appMode]);
+  }, []);
 
-  // Export JSON configuration (OR-21)
-  const handleExportJSON = () => {
-    const data = {
-      name: currentPreset.name,
-      timestamp: new Date().toISOString(),
-      config,
-      bodies: physicsEngineRef.current.getBodies(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orbitalis_${currentPreset.id}_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Import JSON configuration (OR-21)
-  const handleImportJSON = async (file: File) => {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (data.bodies && Array.isArray(data.bodies)) {
-        physicsEngineRef.current.setBodies(data.bodies);
-        if (data.config) {
-          physicsEngineRef.current.setConfig(data.config);
-          setConfig((prev) => ({ ...prev, ...data.config }));
-        }
-        setBodies(physicsEngineRef.current.getBodies());
-        setMeasurements(physicsEngineRef.current.getMeasurements());
-      }
-    } catch (e) {
-      alert(`Invalid JSON simulation file: ${e instanceof Error ? e.message : 'Unknown error'}`);
-    }
-  };
-
-  // Export CSV scientific telemetry (OR-22)
-  const handleExportCSV = () => {
-    const history = measurements.history;
-    let csv = 'Time (Years),Kinetic Energy (M_sun*AU^2/yr^2),Potential Energy,Total Energy,Energy Drift (%)\n';
-    for (const row of history) {
-      csv += `${row.time},${row.kinetic},${row.potential},${row.total},${row.drift}\n`;
-    }
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orbitalis_telemetry_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Keyboard Shortcuts: Space (pause), R (reset), Esc (deselect)
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'SELECT') {
@@ -231,6 +214,7 @@ export function App() {
         handleReset();
       } else if (e.key === 'Escape') {
         setSelectedBodyId(null);
+        setIsFollowingBody(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -240,51 +224,46 @@ export function App() {
   const selectedBody = bodies.find((b) => b.id === selectedBodyId) || null;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black text-white select-none font-sans">
-      {/* Top Header */}
+    <div className="relative w-screen h-screen overflow-hidden bg-[#080B12] text-[#E8EEF7] select-none font-sans">
+      {/* 1. Top Navigation Bar */}
       <Header
-        config={config}
-        onUpdateConfig={handleUpdateConfig}
-        onStepFrame={handleStepFrame}
-        onReset={handleReset}
-        simulationTimeYears={physicsEngineRef.current.getTimeYears()}
-        fps={fps}
-        presetName={currentPreset.name}
-        appMode={appMode}
-        onSetAppMode={setAppMode}
-        bodyCount={bodies.length}
+        currentTab={currentTab}
+        onSelectTab={handleSelectNavTab}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenHelp={() => setIsAboutOpen(true)}
       />
 
-      {/* Main 3D Simulation Viewport */}
-      <main className="absolute inset-0 pt-12 pb-10">
+      {/* 2. Full-Screen Interactive 3D Viewport */}
+      <main className="absolute inset-0">
         <ThreeViewport
           bodies={bodies}
           config={config}
           selectedBodyId={selectedBodyId}
           onSelectBody={setSelectedBodyId}
           focusedBodyId={focusedBodyId}
+          isFollowingBody={isFollowingBody}
           barycenter={measurements.barycenter}
           onFpsUpdate={setFps}
+          showAsteroidBelt={showAsteroidBelt}
         />
       </main>
 
-      {/* Left Sidebar (Only visible in Laboratory & Research modes or toggled) */}
-      {appMode !== 'explorer' && (
-        <Sidebar
-          currentPresetId={currentPreset.id}
-          onSelectPreset={handleSelectPreset}
-          bodies={bodies}
-          selectedBodyId={selectedBodyId}
-          onSelectBody={setSelectedBodyId}
-          onAddBody={handleAddBody}
-          onDeleteBody={handleDeleteBody}
-          onExportJSON={handleExportJSON}
-          onImportJSON={handleImportJSON}
-          onExportCSV={handleExportCSV}
-        />
-      )}
+      {/* 3. Left Floating Toolstrip */}
+      <LeftToolbar
+        bodies={bodies}
+        selectedBodyId={selectedBodyId}
+        onSelectBody={setSelectedBodyId}
+        onAddBody={handleAddBody}
+        onDeleteBody={handleDeleteBody}
+        currentPresetId={currentPreset.id}
+        onSelectPreset={handleSelectPreset}
+        isFollowingBody={isFollowingBody}
+        onToggleFollowBody={handleToggleFollow}
+        isAnalysisOpen={isAnalysisOpen}
+        onToggleAnalysis={() => setIsAnalysisOpen(!isAnalysisOpen)}
+      />
 
-      {/* Right Inspector (Active when body selected or in Laboratory/Research modes) */}
+      {/* 4. Right Inspector Panel */}
       {selectedBody && (
         <Inspector
           body={selectedBody}
@@ -292,19 +271,60 @@ export function App() {
           G={config.G}
           onUpdateBody={handleUpdateBody}
           onDeleteBody={handleDeleteBody}
+          onDuplicateBody={handleDuplicateBody}
           onClose={() => setSelectedBodyId(null)}
           isFocused={focusedBodyId === selectedBodyId}
-          onToggleFocus={(id) => setFocusedBodyId(focusedBodyId === id ? null : id)}
+          onToggleFocus={handleToggleFocus}
+          isFollowing={isFollowingBody && focusedBodyId === selectedBodyId}
+          onToggleFollow={handleToggleFollow}
         />
       )}
 
-      {/* Bottom Scientific Panel (Always available, expanded in Laboratory & Research) */}
-      <Dashboard
-        measurements={measurements}
+      {/* 5. Bottom Left: Floating Analysis Widget */}
+      {isAnalysisOpen && (
+        <BottomAnalysis
+          measurements={measurements}
+          simulationTimeYears={physicsEngineRef.current.getTimeYears()}
+        />
+      )}
+
+      {/* 6. Bottom Center: Floating Playback Controller */}
+      <PlaybackBar
         config={config}
+        onUpdateConfig={handleUpdateConfig}
+        onReset={handleReset}
+        onStepFrame={handleStepFrame}
+        simulationTimeYears={physicsEngineRef.current.getTimeYears()}
+      />
+
+      {/* 7. Bottom Right: Engine Status Badge */}
+      <StatusBadge
+        bodyCount={bodies.length}
+        config={config}
+        onUpdateConfig={handleUpdateConfig}
         fps={fps}
-        appMode={appMode}
-        chaosHistory={chaosHistory}
+      />
+
+      {/* Modals */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        config={config}
+        onUpdateConfig={handleUpdateConfig}
+        showAsteroidBelt={showAsteroidBelt}
+        onToggleAsteroidBelt={() => setShowAsteroidBelt(!showAsteroidBelt)}
+      />
+
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+      />
+
+      <ScenariosModal
+        isOpen={isScenariosOpen}
+        onClose={() => setIsScenariosOpen(false)}
+        currentPresetId={currentPreset.id}
+        onSelectPreset={handleSelectPreset}
       />
     </div>
   );

@@ -30,6 +30,8 @@ export type IntegratorType = 'verlet' | 'euler' | 'rk4';
 export type CollisionModel = 'merge' | 'bounce' | 'none';
 export type AppMode = 'explorer' | 'laboratory' | 'research';
 
+export type RenderQuality = 'performance' | 'balanced' | 'high';
+
 export interface SimulationConfig {
   G: number;                      // Gravitational constant (default: 4*pi^2)
   timeStep: number;               // dt in years per sub-step
@@ -46,7 +48,7 @@ export interface SimulationConfig {
   showBarycenter: boolean;
   showLabels: boolean;
   useRealisticTextures: boolean;  // Toggle photorealistic CDN texture maps vs PBR shaded colors
-  renderQuality: 'performance' | 'balanced' | 'high';
+  renderQuality: RenderQuality;
 }
 
 export interface ScientificMeasurements {

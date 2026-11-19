@@ -10,8 +10,10 @@ interface ThreeViewportProps {
   selectedBodyId: string | null;
   onSelectBody: (id: string | null) => void;
   focusedBodyId: string | null;
+  isFollowingBody?: boolean;
   barycenter: Vector3D;
   onFpsUpdate?: (fps: number) => void;
+  showAsteroidBelt?: boolean;
 }
 
 export function ThreeViewport({
@@ -20,8 +22,10 @@ export function ThreeViewport({
   selectedBodyId,
   onSelectBody,
   focusedBodyId,
+  isFollowingBody = false,
   barycenter,
   onFpsUpdate,
+  showAsteroidBelt = true,
 }: ThreeViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -29,19 +33,23 @@ export function ThreeViewport({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
 
-  // Mesh and trail registries
+  // Mesh registries
   const bodyMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
   const trailLinesRef = useRef<Map<string, THREE.Line>>(new Map());
   const velocityArrowsRef = useRef<Map<string, THREE.ArrowHelper>>(new Map());
   const sharedSphereGeom = useRef<THREE.SphereGeometry>(new THREE.SphereGeometry(1, 32, 24));
   const gridHelperRef = useRef<THREE.GridHelper | null>(null);
+  const asteroidInstancedRef = useRef<THREE.InstancedMesh | null>(null);
+  const asteroidDataRef = useRef<{ radius: number; angle: number; speed: number; y: number; scale: number; rotX: number; rotY: number }[]>([]);
 
-  // Mutable refs for animation loop
+  // State refs for animation loop
   const bodiesRef = useRef(bodies);
   const configRef = useRef(config);
   const selectedBodyIdRef = useRef(selectedBodyId);
   const focusedBodyIdRef = useRef(focusedBodyId);
+  const isFollowingBodyRef = useRef(isFollowingBody);
   const barycenterRef = useRef(barycenter);
+  const prevFollowPosRef = useRef<THREE.Vector3 | null>(null);
 
   useEffect(() => {
     bodiesRef.current = bodies;
@@ -57,7 +65,14 @@ export function ThreeViewport({
 
   useEffect(() => {
     focusedBodyIdRef.current = focusedBodyId;
+    // Reset follow tracking baseline on focus target change
+    prevFollowPosRef.current = null;
   }, [focusedBodyId]);
+
+  useEffect(() => {
+    isFollowingBodyRef.current = isFollowingBody;
+    prevFollowPosRef.current = null;
+  }, [isFollowingBody]);
 
   useEffect(() => {
     barycenterRef.current = barycenter;
@@ -68,9 +83,9 @@ export function ThreeViewport({
     const container = containerRef.current;
     if (!container) return;
 
-    // 1. Scene with Pure Black Astronomical Void
+    // 1. Scene with Deep Space Obsidian Void
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0x080B12);
     sceneRef.current = scene;
 
     // 2. Camera
@@ -80,10 +95,10 @@ export function ThreeViewport({
       0.01,
       2000
     );
-    camera.position.set(0, 16, 28);
+    camera.position.set(0, 18, 30);
     cameraRef.current = camera;
 
-    // 3. High-Precision WebGL Renderer
+    // 3. WebGL Renderer
     const renderer = new THREE.WebGLRenderer({
       antialias: config.renderQuality !== 'performance',
       powerPreference: 'high-performance',
@@ -92,7 +107,7 @@ export function ThreeViewport({
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.15;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -105,16 +120,16 @@ export function ThreeViewport({
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
-    // 5. Lighting: Central stellar emitter + ambient fill
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+    // 5. Lighting: Central Sun radiance + Soft ambient
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
-    const sunPointLight = new THREE.PointLight(0xffffff, 2.5, 600, 1.2);
+    const sunPointLight = new THREE.PointLight(0xffffff, 2.8, 600, 1.2);
     sunPointLight.position.set(0, 0, 0);
     scene.add(sunPointLight);
 
-    // 6. Deep Space Background Starfield (Subtle & Non-distracting)
-    const starCount = 2000;
+    // 6. Deep Space Background Starfield
+    const starCount = 3000;
     const starGeom = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
     const starColors = new Float32Array(starCount * 3);
@@ -130,83 +145,217 @@ export function ThreeViewport({
 
       const t = Math.random();
       if (t > 0.85) {
-        starColors[i * 3] = 0.8; starColors[i * 3 + 1] = 0.9; starColors[i * 3 + 2] = 1.0;
+        starColors[i * 3] = 0.7; starColors[i * 3 + 1] = 0.85; starColors[i * 3 + 2] = 1.0;
       } else if (t < 0.15) {
-        starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 0.85; starColors[i * 3 + 2] = 0.7;
+        starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 0.8; starColors[i * 3 + 2] = 0.6;
       } else {
-        starColors[i * 3] = 0.9; starColors[i * 3 + 1] = 0.9; starColors[i * 3 + 2] = 0.9;
+        starColors[i * 3] = 0.9; starColors[i * 3 + 1] = 0.92; starColors[i * 3 + 2] = 0.95;
       }
     }
     starGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     starGeom.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
 
     const starMaterial = new THREE.PointsMaterial({
-      size: 1.0,
+      size: 1.1,
       vertexColors: true,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.8,
     });
     const starField = new THREE.Points(starGeom, starMaterial);
     scene.add(starField);
 
-    // 7. Scientific Ecliptic Coordinate Grid (Off-white Lines)
-    const grid = new THREE.GridHelper(60, 60, 0x333333, 0x1a1a1a);
+    // 7. Subtle Deep-Space Cosmic Nebula Particles
+    const nebulaCount = 400;
+    const nebulaGeom = new THREE.BufferGeometry();
+    const nebulaPos = new Float32Array(nebulaCount * 3);
+    const nebulaColors = new Float32Array(nebulaCount * 3);
+
+    for (let i = 0; i < nebulaCount; i++) {
+      const r = 250 + Math.random() * 300;
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+
+      nebulaPos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+      nebulaPos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th) * 0.4;
+      nebulaPos[i * 3 + 2] = r * Math.cos(ph);
+
+      // Deep cyan & indigo cosmic glow
+      nebulaColors[i * 3] = 0.1 + Math.random() * 0.15;
+      nebulaColors[i * 3 + 1] = 0.15 + Math.random() * 0.2;
+      nebulaColors[i * 3 + 2] = 0.35 + Math.random() * 0.35;
+    }
+    nebulaGeom.setAttribute('position', new THREE.BufferAttribute(nebulaPos, 3));
+    nebulaGeom.setAttribute('color', new THREE.BufferAttribute(nebulaColors, 3));
+
+    const nebulaMaterial = new THREE.PointsMaterial({
+      size: 5.0,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+    });
+    const nebulaField = new THREE.Points(nebulaGeom, nebulaMaterial);
+    scene.add(nebulaField);
+
+    // 8. Ecliptic Coordinate Grid
+    const grid = new THREE.GridHelper(60, 60, 0x263447, 0x141E2B);
     grid.position.y = -0.01;
     scene.add(grid);
     gridHelperRef.current = grid;
 
-    // 8. Barycentre Marker (Technical Crosshair Reticle)
-    const baryGroup = new THREE.Group();
-    baryGroup.name = 'BarycenterMarker';
-    const baryLineMat = new THREE.LineBasicMaterial({ color: 0xd97706, linewidth: 1 });
-    const baryGeomX = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.2, 0, 0), new THREE.Vector3(0.2, 0, 0)]);
-    const baryGeomZ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -0.2), new THREE.Vector3(0, 0, 0.2)]);
-    baryGroup.add(new THREE.Line(baryGeomX, baryLineMat));
-    baryGroup.add(new THREE.Line(baryGeomZ, baryLineMat));
-    scene.add(baryGroup);
+    // 9. Asteroid Belt InstancedMesh (1,200 Realistic Asteroids)
+    const asteroidCount = 1200;
+    const asteroidGeom = new THREE.DodecahedronGeometry(0.016, 1);
+    const asteroidMat = new THREE.MeshStandardMaterial({
+      color: 0x8a929e,
+      roughness: 0.85,
+      metalness: 0.1,
+    });
+    const asteroidMesh = new THREE.InstancedMesh(asteroidGeom, asteroidMat, asteroidCount);
+    asteroidMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
-    // 9. Render & Animation Loop
+    const dummy = new THREE.Object3D();
+    const asteroidData: { radius: number; angle: number; speed: number; y: number; scale: number; rotX: number; rotY: number }[] = [];
+
+    for (let i = 0; i < asteroidCount; i++) {
+      // Mars-Jupiter Asteroid Belt: 2.2 to 3.4 AU
+      const r = 2.2 + Math.random() * 1.2;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.sqrt(4 * Math.PI * Math.PI / Math.pow(r, 3)); // Keplerian orbital speed
+      const y = (Math.random() - 0.5) * 0.14;
+      const scale = 0.5 + Math.random() * 1.3;
+
+      asteroidData.push({
+        radius: r,
+        angle,
+        speed,
+        y,
+        scale,
+        rotX: Math.random() * Math.PI,
+        rotY: Math.random() * Math.PI,
+      });
+
+      dummy.position.set(r * Math.cos(angle), y, r * Math.sin(angle));
+      dummy.scale.set(scale, scale * (0.8 + Math.random() * 0.4), scale);
+      dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      dummy.updateMatrix();
+      asteroidMesh.setMatrixAt(i, dummy.matrix);
+    }
+    asteroidMesh.instanceMatrix.needsUpdate = true;
+    scene.add(asteroidMesh);
+    asteroidInstancedRef.current = asteroidMesh;
+    asteroidDataRef.current = asteroidData;
+
+    // 10. Click Selection Raycasting
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const handleClick = (e: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const targetMeshes: THREE.Object3D[] = [];
+      bodyMeshesRef.current.forEach((group) => {
+        const sphere = group.getObjectByName('sphere');
+        if (sphere) targetMeshes.push(sphere);
+      });
+
+      const intersects = raycaster.intersectObjects(targetMeshes);
+      if (intersects.length > 0) {
+        const parent = intersects[0].object.parent;
+        if (parent && parent.name.startsWith('Body_')) {
+          const bodyId = parent.name.replace('Body_', '');
+          onSelectBody(bodyId);
+        }
+      }
+    };
+
+    renderer.domElement.addEventListener('click', handleClick);
+
+    // 11. Window Resize
+    const handleResize = () => {
+      if (!container || !camera || !renderer) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // 12. Animation Render Loop
     let animId: number;
     let frameCount = 0;
-    let lastFpsTime = performance.now();
+    let fpsTimer = performance.now();
+    let lastAnimTime = performance.now();
 
-    const animate = (time: number) => {
+    const animate = (currentTime: number) => {
       animId = requestAnimationFrame(animate);
 
-      frameCount++;
-      if (time - lastFpsTime >= 1000) {
-        onFpsUpdate?.(Math.round((frameCount * 1000) / (time - lastFpsTime)));
-        frameCount = 0;
-        lastFpsTime = time;
-      }
+      const dt = Math.min(0.05, (currentTime - lastAnimTime) / 1000);
+      lastAnimTime = currentTime;
 
-      controls.update();
+      // Update FPS counter
+      frameCount++;
+      if (currentTime - fpsTimer >= 1000) {
+        if (onFpsUpdate) onFpsUpdate(frameCount);
+        frameCount = 0;
+        fpsTimer = currentTime;
+      }
 
       const curBodies = bodiesRef.current;
       const curConfig = configRef.current;
       const curFocusedId = focusedBodyIdRef.current;
-      const curBary = barycenterRef.current;
+      const isFollowing = isFollowingBodyRef.current;
 
-      // Toggle grid
-      if (gridHelperRef.current) {
-        gridHelperRef.current.visible = curConfig.showGrid;
-      }
-
-      // Update Barycentre
-      baryGroup.visible = curConfig.showBarycenter;
-      if (baryGroup.visible) {
-        baryGroup.position.set(curBary.x, curBary.y, curBary.z);
-      }
-
-      // Camera auto-tracking
+      // Camera auto-tracking & following
       if (curFocusedId) {
         const targetBody = curBodies.find((b) => b.id === curFocusedId);
         if (targetBody) {
-          const targetVec = new THREE.Vector3(targetBody.position.x, targetBody.position.y, targetBody.position.z);
-          controls.target.lerp(targetVec, 0.08);
+          const curPos = new THREE.Vector3(targetBody.position.x, targetBody.position.y, targetBody.position.z);
+
+          if (isFollowing) {
+            // Camera follow: displace camera by the exact movement delta of the body
+            if (prevFollowPosRef.current) {
+              const delta = curPos.clone().sub(prevFollowPosRef.current);
+              camera.position.add(delta);
+              controls.target.add(delta);
+            } else {
+              controls.target.copy(curPos);
+            }
+            prevFollowPosRef.current = curPos.clone();
+          } else {
+            // Focus smooth lerp
+            controls.target.lerp(curPos, 0.08);
+          }
         }
       } else if (curConfig.showBarycenter && curBodies.length > 0) {
-        controls.target.lerp(new THREE.Vector3(curBary.x, curBary.y, curBary.z), 0.04);
+        controls.target.lerp(new THREE.Vector3(barycenterRef.current.x, barycenterRef.current.y, barycenterRef.current.z), 0.04);
+      }
+
+      // Update Asteroid Belt Orbiting
+      if (asteroidInstancedRef.current && showAsteroidBelt && !curConfig.isPaused) {
+        const simSpeed = curConfig.timeMultiplier || 1.0;
+        const dummyAsteroid = new THREE.Object3D();
+        const aMesh = asteroidInstancedRef.current;
+        const aData = asteroidDataRef.current;
+
+        for (let i = 0; i < aData.length; i++) {
+          const ast = aData[i];
+          ast.angle += ast.speed * dt * 0.15 * simSpeed;
+
+          dummyAsteroid.position.set(
+            ast.radius * Math.cos(ast.angle),
+            ast.y,
+            ast.radius * Math.sin(ast.angle)
+          );
+          dummyAsteroid.scale.set(ast.scale, ast.scale, ast.scale);
+          dummyAsteroid.rotation.set(ast.rotX, ast.rotY + ast.angle, 0);
+          dummyAsteroid.updateMatrix();
+          aMesh.setMatrixAt(i, dummyAsteroid.matrix);
+        }
+        aMesh.instanceMatrix.needsUpdate = true;
       }
 
       // Clean up meshes of deleted bodies
@@ -262,13 +411,13 @@ export function ThreeViewport({
           sphere.name = 'sphere';
           group.add(sphere);
 
-          // Star Photosphere Glow (Subtle & Natural, Not Neon)
+          // Star Photosphere Radiance
           if (isStar) {
-            const coronaGeom = new THREE.SphereGeometry(1.2, 16, 16);
+            const coronaGeom = new THREE.SphereGeometry(1.25, 24, 24);
             const coronaMat = new THREE.MeshBasicMaterial({
-              color: 0xffe066,
+              color: 0xffa500,
               transparent: true,
-              opacity: 0.2,
+              opacity: 0.22,
               side: THREE.BackSide,
             });
             const corona = new THREE.Mesh(coronaGeom, coronaMat);
@@ -290,18 +439,32 @@ export function ThreeViewport({
             group.add(ring);
           }
 
-          // Technical Selection Reticle (Square Brackets - Pure White)
-          const reticleGeom = new THREE.RingGeometry(1.2, 1.25, 4);
-          reticleGeom.rotateX(Math.PI / 2);
-          reticleGeom.rotateY(Math.PI / 4);
-          const reticleMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            side: THREE.DoubleSide,
-          });
-          const reticle = new THREE.Mesh(reticleGeom, reticleMat);
-          reticle.name = 'reticle';
-          reticle.visible = false;
-          group.add(reticle);
+          // Technical 4-Corner Bracket Reticle: ┌ ┐ / └ ┘
+          const bracketGroup = new THREE.Group();
+          bracketGroup.name = 'reticle';
+          const bracketMat = new THREE.LineBasicMaterial({ color: 0x8797FF, linewidth: 2 });
+          const sz = 1.35;
+          const len = 0.45;
+
+          // 4 Corner L-Shapes in X-Y plane (billboarded)
+          const cornerPoints: THREE.Vector3[][] = [
+            // Top-Left: ┌
+            [new THREE.Vector3(-sz, sz - len, 0), new THREE.Vector3(-sz, sz, 0), new THREE.Vector3(-sz + len, sz, 0)],
+            // Top-Right: ┐
+            [new THREE.Vector3(sz - len, sz, 0), new THREE.Vector3(sz, sz, 0), new THREE.Vector3(sz, sz - len, 0)],
+            // Bottom-Left: └
+            [new THREE.Vector3(-sz, -sz + len, 0), new THREE.Vector3(-sz, -sz, 0), new THREE.Vector3(-sz + len, -sz, 0)],
+            // Bottom-Right: ┘
+            [new THREE.Vector3(sz - len, -sz, 0), new THREE.Vector3(sz, -sz, 0), new THREE.Vector3(sz, -sz + len, 0)],
+          ];
+
+          for (const pts of cornerPoints) {
+            const geom = new THREE.BufferGeometry().setFromPoints(pts);
+            bracketGroup.add(new THREE.Line(geom, bracketMat));
+          }
+
+          bracketGroup.visible = false;
+          group.add(bracketGroup);
 
           scene.add(group);
           bodyMeshesRef.current.set(b.id, group);
@@ -315,14 +478,18 @@ export function ThreeViewport({
           sphereMesh.scale.set(radius, radius, radius);
         }
 
-        // Reticle Selection Highlight
+        // Reticle Selection Highlight & Billboard facing camera
         const reticle = group.getObjectByName('reticle');
         if (reticle) {
-          reticle.visible = b.id === selectedBodyIdRef.current;
-          reticle.scale.set(radius * 1.3, radius * 1.3, radius * 1.3);
+          const isSelected = b.id === selectedBodyIdRef.current;
+          reticle.visible = isSelected;
+          if (isSelected) {
+            reticle.scale.set(radius * 1.25, radius * 1.25, radius * 1.25);
+            reticle.quaternion.copy(camera.quaternion); // Always face camera
+          }
         }
 
-        // Velocity Vectors (Clean ArrowHelper)
+        // Velocity Vectors
         if (curConfig.showVectors) {
           let arrow = velocityArrowsRef.current.get(b.id);
           const speed = Math.hypot(b.velocity.x, b.velocity.y, b.velocity.z);
@@ -332,7 +499,7 @@ export function ThreeViewport({
             const length = Math.min(2.5, speed * 0.18 + 0.2);
 
             if (!arrow) {
-              arrow = new THREE.ArrowHelper(dir, group.position, length, 0x10b981, 0.15, 0.1);
+              arrow = new THREE.ArrowHelper(dir, group.position, length, 0x5FD5E8, 0.15, 0.1);
               scene.add(arrow);
               velocityArrowsRef.current.set(b.id, arrow);
             } else {
@@ -349,7 +516,7 @@ export function ThreeViewport({
           if (arrow) arrow.visible = false;
         }
 
-        // 3D Orbital Trails
+        // 3D Orbital Trajectory Trails
         if (curConfig.showTrails && b.trail && b.trail.length > 2) {
           let line = trailLinesRef.current.get(b.id);
           if (!line) {
@@ -357,7 +524,7 @@ export function ThreeViewport({
             const lineMat = new THREE.LineBasicMaterial({
               color: new THREE.Color(b.color),
               transparent: true,
-              opacity: 0.35,
+              opacity: 0.4,
             });
             line = new THREE.Line(lineGeom, lineMat);
             scene.add(line);
@@ -370,8 +537,9 @@ export function ThreeViewport({
             points[i * 3 + 1] = b.trail[i].y;
             points[i * 3 + 2] = b.trail[i].z;
           }
+
           line.geometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
-          line.geometry.attributes.position.needsUpdate = true;
+          line.geometry.setDrawRange(0, b.trail.length);
           line.visible = true;
         } else {
           const line = trailLinesRef.current.get(b.id);
@@ -379,60 +547,28 @@ export function ThreeViewport({
         }
       }
 
+      // Update grid visibility
+      if (gridHelperRef.current) {
+        gridHelperRef.current.visible = curConfig.showGrid;
+      }
+
+      controls.update();
       renderer.render(scene, camera);
     };
 
     animId = requestAnimationFrame(animate);
 
-    // Raycasting for object selection
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    const handlePointerDown = (e: MouseEvent) => {
-      if (!container || !camera) return;
-      const rect = container.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-
-      const interactiveMeshes: THREE.Object3D[] = [];
-      bodyMeshesRef.current.forEach((grp) => {
-        const sph = grp.getObjectByName('sphere');
-        if (sph) interactiveMeshes.push(sph);
-      });
-
-      const intersects = raycaster.intersectObjects(interactiveMeshes);
-      if (intersects.length > 0) {
-        const parentGrp = intersects[0].object.parent;
-        if (parentGrp) {
-          const bodyId = parentGrp.name.replace('Body_', '');
-          onSelectBody(bodyId);
-        }
-      }
-    };
-
-    container.addEventListener('click', handlePointerDown);
-
-    const handleResize = () => {
-      if (!container || !renderer || !camera) return;
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
-    };
-    window.addEventListener('resize', handleResize);
-
+    // Cleanup on unmount
     return () => {
-      window.removeEventListener('resize', handleResize);
-      container.removeEventListener('click', handlePointerDown);
       cancelAnimationFrame(animId);
-      controls.dispose();
-      renderer.dispose();
+      window.removeEventListener('resize', handleResize);
+      renderer.domElement.removeEventListener('click', handleClick);
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
+      renderer.dispose();
     };
-  }, [config.renderQuality, onFpsUpdate, onSelectBody]);
+  }, [config.renderQuality, onFpsUpdate, onSelectBody, showAsteroidBelt]);
 
-  return <div ref={containerRef} className="relative w-full h-full cursor-grab active:cursor-grabbing select-none" />;
+  return <div ref={containerRef} className="w-full h-full relative cursor-grab active:cursor-grabbing" />;
 }
