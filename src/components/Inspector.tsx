@@ -210,8 +210,15 @@ export const Inspector: React.FC<InspectorProps> = ({
 
           <div className="truncate">
             <h2 className="font-display font-semibold text-sm tracking-wider text-[#E8EEF7] truncate">{body.name}</h2>
-            <p className="font-sans text-[11px] text-[#8E9BAD] capitalize tracking-wide">
-              {body.type} • <span className="text-[#8797FF] font-medium">Selected</span>
+            <p className="font-sans text-[11px] text-[#8E9BAD] capitalize tracking-wide flex items-center gap-1.5">
+              <span>{body.type}</span>
+              {body.modelUrl && (
+                <span className="px-1.5 py-0.2 bg-[#5FD5E8]/15 text-[#5FD5E8] border border-[#5FD5E8]/40 rounded text-[9px] uppercase font-mono font-medium">
+                  NASA 3D
+                </span>
+              )}
+              <span>•</span>
+              <span className="text-[#8797FF] font-medium">Selected</span>
             </p>
           </div>
         </div>

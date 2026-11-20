@@ -50,6 +50,7 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
   // Add Body Form state
   const [name, setName] = useState('New Planetesimal');
   const [type, setType] = useState<BodyType>('planet');
+  const [modelUrl, setModelUrl] = useState<string>('');
   const [mass, setMass] = useState(3.0e-6);
   const [posX, setPosX] = useState(2.0);
   const [posY, setPosY] = useState(0.0);
@@ -69,12 +70,13 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
       id: `body-${Date.now()}`,
       name,
       type,
-      mass: Math.max(1e-12, mass),
+      mass: Math.max(1e-15, mass),
       radius: mass > 0.01 ? 0.005 : 4e-5,
-      visualRadius: type === 'star' ? 0.35 : 0.12,
+      visualRadius: type === 'star' ? 0.35 : type === 'probe' ? 0.08 : 0.12,
       position: { x: posX, y: posY, z: posZ },
       velocity: { x: velX, y: velY, z: velZ },
       color,
+      modelUrl: modelUrl || undefined,
       trail: [],
     };
     onAddBody(newBody);
@@ -275,6 +277,45 @@ export const LeftToolbar: React.FC<LeftToolbarProps> = ({
                   <option value="moon">Moon</option>
                   <option value="asteroid">Asteroid</option>
                   <option value="probe">Spacecraft / Probe</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[#8E9BAD] block text-xs mb-0.5">NASA 3D Model Preset (.glb)</label>
+                <select
+                  value={modelUrl}
+                  onChange={(e) => {
+                    const m = e.target.value;
+                    setModelUrl(m);
+                    if (m === 'voyager') {
+                      setName('Voyager 1 Probe');
+                      setType('probe');
+                      setColor('#5FD5E8');
+                      setMass(1e-12);
+                    } else if (m === 'jwst') {
+                      setName('James Webb (JWST)');
+                      setType('probe');
+                      setColor('#f59e0b');
+                      setMass(1e-15);
+                    } else if (m === 'bennu') {
+                      setName('Asteroid Bennu');
+                      setType('asteroid');
+                      setColor('#94a3b8');
+                      setMass(3.7e-11);
+                    } else if (m === 'pioneer') {
+                      setName('Pioneer 10');
+                      setType('probe');
+                      setColor('#cbd5e1');
+                      setMass(1e-12);
+                    }
+                  }}
+                  className="w-full px-2 py-1 bg-[#141E2B] border border-[#263447] rounded-lg text-[#E8EEF7] focus:outline-none focus:border-[#8797FF]"
+                >
+                  <option value="">Default Procedural Sphere</option>
+                  <option value="voyager">NASA Voyager 1 Probe (.glb)</option>
+                  <option value="jwst">NASA James Webb Space Telescope (.glb)</option>
+                  <option value="bennu">NASA Asteroid Bennu (.glb)</option>
+                  <option value="pioneer">NASA Pioneer 10 Probe (.glb)</option>
                 </select>
               </div>
 

@@ -19,6 +19,7 @@ export interface CelestialBody {
   trail: Vector3D[];      // Historical 3D orbital trajectory
   isFixed?: boolean;      // Stationary anchor
   textureUrl?: string;    // Direct web CDN URL for photorealistic planet maps
+  modelUrl?: string;      // Direct web GLB/GLTF model URL (e.g. NASA 3D resources)
   rings?: {
     innerRadius: number;
     outerRadius: number;

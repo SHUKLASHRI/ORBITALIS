@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { CelestialBody, SimulationConfig, Vector3D } from '../physics/types';
 import { textureService } from './textures';
+import { modelService } from './models';
 
 interface ThreeViewportProps {
   bodies: CelestialBody[];
@@ -268,14 +269,23 @@ export function ThreeViewport({
       const targetMeshes: THREE.Object3D[] = [];
       bodyMeshesRef.current.forEach((group) => {
         const sphere = group.getObjectByName('sphere');
-        if (sphere) targetMeshes.push(sphere);
+        if (sphere && sphere.visible) targetMeshes.push(sphere);
+        const customModel = group.getObjectByName('customModel');
+        if (customModel) {
+          customModel.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) targetMeshes.push(child);
+          });
+        }
       });
 
       const intersects = raycaster.intersectObjects(targetMeshes);
       if (intersects.length > 0) {
-        const parent = intersects[0].object.parent;
-        if (parent && parent.name.startsWith('Body_')) {
-          const bodyId = parent.name.replace('Body_', '');
+        let cur: THREE.Object3D | null = intersects[0].object;
+        while (cur && !cur.name.startsWith('Body_') && cur.parent) {
+          cur = cur.parent;
+        }
+        if (cur && cur.name.startsWith('Body_')) {
+          const bodyId = cur.name.replace('Body_', '');
           onSelectBody(bodyId);
         }
       }
@@ -419,6 +429,19 @@ export function ThreeViewport({
           sphere.name = 'sphere';
           group.add(sphere);
 
+          // Stream real NASA 3D model asynchronously if specified
+          if (b.modelUrl) {
+            const capturedGroup = group;
+            modelService.loadModel(b.modelUrl).then((modelNode) => {
+              if (modelNode && capturedGroup) {
+                modelNode.name = 'customModel';
+                const existingSphere = capturedGroup.getObjectByName('sphere');
+                if (existingSphere) existingSphere.visible = false;
+                capturedGroup.add(modelNode);
+              }
+            });
+          }
+
           // Star Photosphere Radiance (DepthWrite disabled, unit geometry dynamically scaled)
           if (isStar) {
             const coronaGeom = new THREE.SphereGeometry(1.0, 32, 24);
@@ -505,6 +528,15 @@ export function ThreeViewport({
         const ringMesh = group.getObjectByName('ring');
         if (ringMesh) {
           ringMesh.scale.set(radius, radius, radius);
+        }
+
+        // Custom NASA 3D Model Scale & Axial Tumble
+        const customModel = group.getObjectByName('customModel');
+        if (customModel) {
+          const mScale = radius * 2.2;
+          customModel.scale.set(mScale, mScale, mScale);
+          customModel.rotation.y += dt * 0.35;
+          if (sphereMesh) sphereMesh.visible = false;
         }
 
         // Reticle Selection Highlight & Billboard facing camera

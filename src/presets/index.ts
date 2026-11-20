@@ -363,14 +363,15 @@ export const PRESET_SLINGSHOT: PresetSystem = {
     },
     {
       id: 'voyager',
-      name: 'Interstellar Probe',
+      name: 'Voyager 1 (NASA 3D Probe)',
       type: 'probe',
       mass: 1e-12,
       radius: 1e-6,
-      visualRadius: 0.08,
+      visualRadius: 0.1,
       position: { x: 4.5, y: 0.05, z: -1.2 },
       velocity: { x: 0.85, y: 0, z: 3.65 },
-      color: '#10b981',
+      color: '#5FD5E8',
+      modelUrl: 'voyager',
       trail: [],
     },
   ],
@@ -430,6 +431,19 @@ export const PRESET_ASTEROID_BELT: PresetSystem = {
         textureUrl: 'jupiter',
         trail: [],
       },
+      {
+        id: 'bennu',
+        name: 'Asteroid Bennu (NASA 3D Laser Altimeter Mesh)',
+        type: 'asteroid',
+        mass: 3.7e-11,
+        radius: 3.3e-6,
+        visualRadius: 0.1,
+        position: { x: 2.36, y: 0.04, z: 0 },
+        velocity: { x: 0, y: 0, z: Math.sqrt(G_ASTRONOMICAL / 2.36) },
+        color: '#94a3b8',
+        modelUrl: 'bennu',
+        trail: [],
+      },
     ];
 
     for (let i = 0; i < 180; i++) {
@@ -462,6 +476,77 @@ export const PRESET_ASTEROID_BELT: PresetSystem = {
 
     return bodies;
   })(),
+};
+
+export const PRESET_JWST_L2: PresetSystem = {
+  id: 'jwst-l2-lagrange',
+  name: 'Sun-Earth L2 Lagrange Halo — James Webb (JWST)',
+  description: 'Authentic NASA 3D model of the James Webb Space Telescope positioned at the Sun-Earth L2 Lagrangian equilibrium point (1.5M km anti-sunward).',
+  objective: 'Observe 3-body gravitational equilibrium and halo orbit stability around the collinear L2 Lagrange point.',
+  camera: { x: 0.95, y: 0.08, z: 0.22, targetX: 1.01, targetY: 0, targetZ: 0 },
+  config: {
+    G: G_ASTRONOMICAL,
+    timeStep: 0.0005,
+    timeMultiplier: 0.5,
+    integrator: 'verlet',
+    collisionModel: 'none',
+    showTrails: true,
+    showVectors: true,
+  },
+  bodies: [
+    {
+      id: 'sun',
+      name: 'Sun',
+      type: 'star',
+      mass: 1.0,
+      radius: 0.00465,
+      visualRadius: 0.35,
+      position: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      color: '#ffcc33',
+      textureUrl: 'sun',
+      trail: [],
+    },
+    {
+      id: 'earth',
+      name: 'Earth',
+      type: 'planet',
+      mass: 3.003e-6,
+      radius: 4.26e-5,
+      visualRadius: 0.06,
+      position: { x: 1.0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 2 * Math.PI },
+      color: '#2563eb',
+      textureUrl: 'earth',
+      trail: [],
+    },
+    {
+      id: 'moon',
+      name: 'Moon',
+      type: 'moon',
+      mass: 3.69e-8,
+      radius: 1.16e-5,
+      visualRadius: 0.02,
+      position: { x: 1.00257, y: 0.0001, z: 0 },
+      velocity: { x: 0, y: 0, z: 2 * Math.PI + 0.216 },
+      color: '#cbd5e1',
+      trail: [],
+    },
+    {
+      id: 'jwst',
+      name: 'James Webb Space Telescope (NASA 3D Model)',
+      type: 'probe',
+      mass: 1e-15,
+      radius: 1e-6,
+      visualRadius: 0.035,
+      // L2 is at R * (1 + (M_earth / (3 * M_sun))^(1/3)) ≈ 1.01003 AU
+      position: { x: 1.01003, y: 0.0005, z: 0 },
+      velocity: { x: 0, y: 0, z: 2 * Math.PI * 1.01003 },
+      color: '#f59e0b',
+      modelUrl: 'jwst',
+      trail: [],
+    },
+  ],
 };
 
 export function generateRandomCluster(count: number = 200): PresetSystem {
@@ -527,11 +612,12 @@ export function generateRandomCluster(count: number = 200): PresetSystem {
 
 export const ALL_PRESETS: PresetSystem[] = [
   PRESET_SOLAR_SYSTEM,
+  PRESET_JWST_L2,
+  PRESET_SLINGSHOT,
+  PRESET_ASTEROID_BELT,
   PRESET_BINARY_STARS,
   PRESET_THREE_BODY,
   PRESET_CHAOS_DIVERGENCE,
-  PRESET_SLINGSHOT,
-  PRESET_ASTEROID_BELT,
   generateRandomCluster(200),
   generateRandomCluster(500),
 ];
